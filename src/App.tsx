@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { RequireAuth } from "@/auth/RequireAuth";
+import { RequireRole } from "@/auth/RequireRole";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import Departments from "./pages/Departments";
@@ -36,15 +37,23 @@ const App = () => (
             <Route element={<RequireAuth />}>
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/admin/users/new" element={<AdminCreateUser />} />
+                <Route element={<RequireRole allowed={["admin"]} />}>
+                  <Route path="/admin/users/new" element={<AdminCreateUser />} />
+                </Route>
                 <Route path="/employees" element={<Employees />} />
                 <Route path="/departments" element={<Departments />} />
                 <Route path="/attendance" element={<Attendance />} />
                 <Route path="/leave" element={<Leave />} />
-                <Route path="/payroll" element={<Payroll />} />
+                <Route element={<RequireRole allowed={["admin", "hr", "payroll"]} />}>
+                  <Route path="/payroll" element={<Payroll />} />
+                </Route>
                 <Route path="/performance" element={<Performance />} />
-                <Route path="/audit-logs" element={<AuditLogs />} />
-                <Route path="/settings" element={<SettingsPage />} />
+                <Route element={<RequireRole allowed={["admin", "hr", "security"]} />}>
+                  <Route path="/audit-logs" element={<AuditLogs />} />
+                </Route>
+                <Route element={<RequireRole allowed={["admin", "hr"]} />}>
+                  <Route path="/settings" element={<SettingsPage />} />
+                </Route>
               </Route>
             </Route>
 

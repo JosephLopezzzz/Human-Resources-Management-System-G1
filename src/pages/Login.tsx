@@ -53,16 +53,25 @@ export default function Login() {
 
     setSubmitting(true);
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { data, error: fnError } = await supabase.functions.invoke("login-with-rate-limit", {
+        body: { email, password },
       });
 
-      if (signInError) {
+      if (fnError) {
+        setError("Login failed.");
+        return;
+      }
+
+      if (!data || data.error) {
         registerLoginFailure(email);
         setLockRemainingMs(getLockRemainingMs(email));
-        setError("Invalid email or password.");
+        setError(data?.error ?? "Invalid email or password.");
         return;
+      }
+
+      const session = data.session as { access_token: string; refresh_token: string };
+      if (session?.access_token && session.refresh_token) {
+        await supabase.auth.setSession(session);
       }
 
       resetLoginFailures(email);
