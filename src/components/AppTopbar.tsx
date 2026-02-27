@@ -2,8 +2,22 @@ import { Bell, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/auth/useAuth";
 
 export function AppTopbar() {
+  const { user } = useAuth();
+  const email = user?.email ?? "—";
+  const name =
+    (user?.user_metadata?.full_name as string | undefined) ??
+    (user?.user_metadata?.name as string | undefined) ??
+    "User";
+  const initials = (name || email || "U")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase())
+    .join("");
+
   return (
     <header className="h-14 border-b border-border bg-card flex items-center justify-between px-6 shrink-0">
       <div className="flex items-center gap-3 w-80">
@@ -25,12 +39,12 @@ export function AppTopbar() {
         <div className="flex items-center gap-2">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-              SA
+              {initials}
             </AvatarFallback>
           </Avatar>
           <div className="hidden md:block">
-            <p className="text-sm font-medium leading-none">Super Admin</p>
-            <p className="text-xs text-muted-foreground">admin@hrms.io</p>
+            <p className="text-sm font-medium leading-none">{name}</p>
+            <p className="text-xs text-muted-foreground">{email}</p>
           </div>
         </div>
       </div>
