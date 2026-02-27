@@ -7,28 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-
-interface AuditLog {
-  id: string;
-  timestamp: string;
-  actor: string;
-  action: string;
-  entity: string;
-  entityId: string;
-  ipAddress: string;
-  category: string;
-}
-
-const auditLogs: AuditLog[] = [
-  { id: "AL-001", timestamp: "2026-02-27 14:23:01", actor: "admin@hrms.io", action: "LOGIN_SUCCESS", entity: "Auth", entityId: "—", ipAddress: "192.168.1.100", category: "auth" },
-  { id: "AL-002", timestamp: "2026-02-27 14:15:33", actor: "hr@hrms.io", action: "EMPLOYEE_UPDATED", entity: "Employee", entityId: "EMP-003", ipAddress: "192.168.1.101", category: "employee" },
-  { id: "AL-003", timestamp: "2026-02-27 13:50:12", actor: "admin@hrms.io", action: "PAYROLL_GENERATED", entity: "Payroll", entityId: "PAY-FEB-2026", ipAddress: "192.168.1.100", category: "payroll" },
-  { id: "AL-004", timestamp: "2026-02-27 13:22:45", actor: "manager@hrms.io", action: "LEAVE_APPROVED", entity: "Leave", entityId: "LR-102", ipAddress: "192.168.1.105", category: "leave" },
-  { id: "AL-005", timestamp: "2026-02-27 12:10:09", actor: "admin@hrms.io", action: "ROLE_CHANGED", entity: "User", entityId: "USR-012", ipAddress: "192.168.1.100", category: "auth" },
-  { id: "AL-006", timestamp: "2026-02-27 11:45:30", actor: "system", action: "LOGIN_FAILED", entity: "Auth", entityId: "—", ipAddress: "10.0.0.55", category: "auth" },
-  { id: "AL-007", timestamp: "2026-02-27 11:30:00", actor: "hr@hrms.io", action: "EMPLOYEE_CREATED", entity: "Employee", entityId: "EMP-009", ipAddress: "192.168.1.101", category: "employee" },
-  { id: "AL-008", timestamp: "2026-02-27 10:20:15", actor: "admin@hrms.io", action: "PAYROLL_LOCKED", entity: "Payroll", entityId: "PAY-JAN-2026", ipAddress: "192.168.1.100", category: "payroll" },
-];
+import { useAuditLogs } from "@/hooks/useAuditLogs";
 
 const categoryColors: Record<string, string> = {
   auth: "bg-info/10 text-info border-info/20",
@@ -41,11 +20,7 @@ const AuditLogs = () => {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
 
-  const filtered = auditLogs.filter((log) => {
-    const matchesSearch = log.action.toLowerCase().includes(search.toLowerCase()) || log.actor.toLowerCase().includes(search.toLowerCase());
-    const matchesCat = category === "all" || log.category === category;
-    return matchesSearch && matchesCat;
-  });
+  const { data: logs = [], isLoading, error } = useAuditLogs(search, category);
 
   return (
     <div>
@@ -74,6 +49,17 @@ const AuditLogs = () => {
             </Select>
           </div>
 
+          {isLoading && (
+            <div className="text-sm text-muted-foreground mb-4">
+              Loading audit logs...
+            </div>
+          )}
+          {error && (
+            <div className="text-sm text-destructive mb-4">
+              Failed to load audit logs.
+            </div>
+          )}
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -87,24 +73,35 @@ const AuditLogs = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((log) => (
+              {logs.map((log) => (
                 <TableRow key={log.id}>
-                  <TableCell className="text-sm font-mono text-muted-foreground whitespace-nowrap">{log.timestamp}</TableCell>
-                  <TableCell className="text-sm">{log.actor}</TableCell>
+                  <TableCell className="text-sm font-mono text-muted-foreground whitespace-nowrap">
+                    {new Date(log.timestamp).toISOString().replace("T", " ").slice(0, 19)}
+                  </TableCell>
+                  <TableCell className="text-sm">{log.actor_email ?? "system"}</TableCell>
                   <TableCell className="text-sm font-mono font-medium">{log.action}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={categoryColors[log.category]}>{log.category}</Badge>
+                    <Badge
+                      variant="outline"
+                      className={categoryColors[log.category] ?? ""}
+                    >
+                      {log.category}
+                    </Badge>
                   </TableCell>
-                  <TableCell className="text-sm">{log.entity}</TableCell>
-                  <TableCell className="text-sm font-mono text-muted-foreground">{log.entityId}</TableCell>
-                  <TableCell className="text-sm font-mono text-muted-foreground">{log.ipAddress}</TableCell>
+                  <TableCell className="text-sm">{log.entity_type}</TableCell>
+                  <TableCell className="text-sm font-mono text-muted-foreground">
+                    {log.entity_id ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-sm font-mono text-muted-foreground">
+                    {log.ip_address ?? "—"}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
 
           <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-            <span>Showing {filtered.length} of {auditLogs.length} logs</span>
+            <span>Showing {logs.length} log(s)</span>
           </div>
         </CardContent>
       </Card>
