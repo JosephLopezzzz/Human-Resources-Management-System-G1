@@ -8,37 +8,79 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plus, Search, Download } from "lucide-react";
 import { useState } from "react";
+import { useEmployees } from "@/hooks/useEmployees";
+import { useAuth } from "@/auth/useAuth";
+import { format } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
-type EmployeeStatus = "regular" | "probation" | "suspended" | "terminated" | "resigned";
+const createEmployeeSchema = z.object({
+  employee_code: z.string().min(1, "Employee ID is required"),
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  email: z.string().email("Enter a valid email"),
+  position: z.string().min(1, "Position is required"),
+  status: z.enum(["regular", "probation", "suspended", "terminated", "resigned"]),
+  join_date: z.string().optional(),
+  salary_amount: z.string().min(1, "Salary is required"),
+  salary_currency: z.string().min(1, "Currency is required"),
+});
 
-interface Employee {
-  id: string;
-  name: string;
-  email: string;
-  department: string;
-  position: string;
-  status: EmployeeStatus;
-  joinDate: string;
-  salary: string;
-}
-
-const employees: Employee[] = [
-  { id: "EMP-001", name: "John Smith", email: "john@company.com", department: "Engineering", position: "Sr. Developer", status: "regular", joinDate: "2023-03-15", salary: "$95,000" },
-  { id: "EMP-002", name: "Sarah Connor", email: "sarah@company.com", department: "Marketing", position: "Marketing Lead", status: "regular", joinDate: "2022-08-01", salary: "$82,000" },
-  { id: "EMP-003", name: "Mike Johnson", email: "mike@company.com", department: "Engineering", position: "Jr. Developer", status: "probation", joinDate: "2026-01-10", salary: "$65,000" },
-  { id: "EMP-004", name: "Emily Davis", email: "emily@company.com", department: "HR", position: "HR Specialist", status: "regular", joinDate: "2024-06-20", salary: "$70,000" },
-  { id: "EMP-005", name: "Robert Wilson", email: "robert@company.com", department: "Finance", position: "Accountant", status: "regular", joinDate: "2023-11-05", salary: "$75,000" },
-  { id: "EMP-006", name: "Lisa Anderson", email: "lisa@company.com", department: "Sales", position: "Sales Rep", status: "suspended", joinDate: "2024-02-14", salary: "$60,000" },
-  { id: "EMP-007", name: "David Brown", email: "david@company.com", department: "Engineering", position: "Tech Lead", status: "regular", joinDate: "2021-09-01", salary: "$120,000" },
-  { id: "EMP-008", name: "Karen Taylor", email: "karen@company.com", department: "Support", position: "Support Lead", status: "resigned", joinDate: "2022-04-18", salary: "$68,000" },
-];
+type CreateEmployeeValues = z.infer<typeof createEmployeeSchema>;
 
 const Employees = () => {
+  const { employees, isLoading, error, createEmployee, creating } = useEmployees();
+  const { user } = useAuth();
+  const role = (user?.user_metadata?.role as string | undefined) ?? "employee";
+  const canManage = role === "admin" || role === "hr";
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [open, setOpen] = useState(false);
+
+  const form = useForm<CreateEmployeeValues>({
+    resolver: zodResolver(createEmployeeSchema),
+    defaultValues: {
+      employee_code: "",
+      first_name: "",
+      last_name: "",
+      email: "",
+      position: "",
+      status: "regular",
+      join_date: "",
+      salary_amount: "",
+      salary_currency: "USD",
+    },
+  });
+
+  async function onSubmit(values: CreateEmployeeValues) {
+    const numericSalary = Number(values.salary_amount.replace(/,/g, ""));
+
+    await createEmployee({
+      employee_code: values.employee_code,
+      first_name: values.first_name,
+      last_name: values.last_name,
+      email: values.email,
+      position: values.position,
+      status: values.status,
+      join_date: values.join_date || new Date().toISOString().slice(0, 10),
+      salary_amount: Number.isFinite(numericSalary) ? numericSalary : 0,
+      salary_currency: values.salary_currency,
+      department_id: null,
+    });
+
+    setOpen(false);
+    form.reset();
+  }
 
   const filtered = employees.filter((e) => {
-    const matchesSearch = e.name.toLowerCase().includes(search.toLowerCase()) || e.id.toLowerCase().includes(search.toLowerCase());
+    const fullName = `${e.first_name} ${e.last_name}`;
+    const matchesSearch =
+      fullName.toLowerCase().includes(search.toLowerCase()) ||
+      e.employee_code.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || e.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -50,14 +92,191 @@ const Employees = () => {
         description="Manage employee records and lifecycle"
         actions={
           <>
-            <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-1" />Export</Button>
-            <Button size="sm"><Plus className="h-4 w-4 mr-1" />Add Employee</Button>
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-1" />
+              Export
+            </Button>
+            {canManage && (
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Employee
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>New Employee</DialogTitle>
+                  </DialogHeader>
+                  <Form {...form}>
+                    <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="employee_code"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Employee ID</FormLabel>
+                              <FormControl>
+                                <Input placeholder="EMP-001" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input type="email" placeholder="user@company.com" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="first_name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>First name</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="last_name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Last name</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="position"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Position</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Sr. Developer" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="status"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Status</FormLabel>
+                              <FormControl>
+                                <Select
+                                  value={field.value}
+                                  onValueChange={field.onChange}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="regular">Regular</SelectItem>
+                                    <SelectItem value="probation">Probation</SelectItem>
+                                    <SelectItem value="suspended">Suspended</SelectItem>
+                                    <SelectItem value="terminated">Terminated</SelectItem>
+                                    <SelectItem value="resigned">Resigned</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="join_date"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Join date</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="salary_amount"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Salary</FormLabel>
+                              <FormControl>
+                                <Input type="number" min={0} step="0.01" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="salary_currency"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Currency</FormLabel>
+                              <FormControl>
+                                <Input placeholder="USD" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={creating}>
+                          {creating ? "Creating..." : "Create"}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            )}
           </>
         }
       />
 
       <Card>
         <CardContent className="pt-4">
+          {isLoading && (
+            <div className="text-sm text-muted-foreground mb-4">
+              Loading employees...
+            </div>
+          )}
+          {error && (
+            <div className="text-sm text-destructive mb-4">
+              Failed to load employees.
+            </div>
+          )}
+
           <div className="flex gap-3 mb-4">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -95,21 +314,28 @@ const Employees = () => {
                     <div className="flex items-center gap-2">
                       <Avatar className="h-7 w-7">
                         <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                          {emp.name.split(" ").map(n => n[0]).join("")}
+                          {`${emp.first_name} ${emp.last_name}`.split(" ").map((n) => n[0]).join("")}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="text-sm font-medium">{emp.name}</p>
+                        <p className="text-sm font-medium">{emp.first_name} {emp.last_name}</p>
                         <p className="text-xs text-muted-foreground">{emp.email}</p>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm font-mono text-muted-foreground">{emp.id}</TableCell>
-                  <TableCell className="text-sm">{emp.department}</TableCell>
+                  <TableCell className="text-sm font-mono text-muted-foreground">{emp.employee_code}</TableCell>
+                  <TableCell className="text-sm">—</TableCell>
                   <TableCell className="text-sm">{emp.position}</TableCell>
                   <TableCell><StatusBadge status={emp.status} /></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{emp.joinDate}</TableCell>
-                  <TableCell className="text-sm text-right font-medium">{emp.salary}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {emp.join_date ? format(new Date(emp.join_date), "yyyy-MM-dd") : "—"}
+                  </TableCell>
+                  <TableCell className="text-sm text-right font-medium">
+                    {emp.salary_amount.toLocaleString(undefined, {
+                      style: "currency",
+                      currency: emp.salary_currency || "USD",
+                    })}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

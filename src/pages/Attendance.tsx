@@ -5,67 +5,129 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "@/components/StatCard";
 import { Clock, UserCheck, AlertTriangle, Timer } from "lucide-react";
-
-const attendanceToday = [
-  { id: "EMP-001", name: "John Smith", clockIn: "08:55", clockOut: "17:30", hours: "8.58", status: "active" as const, overtime: "0.58" },
-  { id: "EMP-002", name: "Sarah Connor", clockIn: "09:15", clockOut: "—", hours: "—", status: "pending" as const, overtime: "—" },
-  { id: "EMP-003", name: "Mike Johnson", clockIn: "09:35", clockOut: "—", hours: "—", status: "rejected" as const, overtime: "—" },
-  { id: "EMP-004", name: "Emily Davis", clockIn: "08:50", clockOut: "17:00", hours: "8.17", status: "active" as const, overtime: "0.17" },
-  { id: "EMP-005", name: "Robert Wilson", clockIn: "08:58", clockOut: "18:15", hours: "9.28", status: "active" as const, overtime: "1.28" },
-  { id: "EMP-007", name: "David Brown", clockIn: "08:30", clockOut: "19:00", hours: "10.5", status: "active" as const, overtime: "2.5" },
-];
+import { useTodayAttendance } from "@/hooks/useAttendance";
+import { useAuth } from "@/auth/useAuth";
+import { format } from "date-fns";
 
 const Attendance = () => {
+  const { logs, isLoading, error, clockInOut, clocking } = useTodayAttendance();
+  const { user } = useAuth();
+
+  const openLog = user
+    ? logs.find((l) => l.user_id === user.id && l.clock_out_at === null)
+    : undefined;
+
+  const buttonLabel = !user
+    ? "Sign in to track time"
+    : openLog
+    ? "Clock Out"
+    : "Clock In";
+
+  async function handleClock() {
+    if (!user) return;
+    await clockInOut({ userId: user.id, email: user.email ?? "" });
+  }
+
+  const todayLabel = format(new Date(), "MMM d, yyyy");
+
   return (
     <div>
       <PageHeader
         title="Attendance"
         description="Daily attendance tracking and overtime management"
-        actions={<Button size="sm"><Clock className="h-4 w-4 mr-1" />Clock In/Out</Button>}
+        actions={
+          <Button
+            size="sm"
+            onClick={handleClock}
+            disabled={!user || clocking}
+          >
+            <Clock className="h-4 w-4 mr-1" />
+            {clocking ? "Saving..." : buttonLabel}
+          </Button>
+        }
       />
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <StatCard icon={UserCheck} title="Present" value={231} change="93.1% of workforce" changeType="positive" />
-        <StatCard icon={Clock} title="Late Arrivals" value={14} change="5.6% today" changeType="negative" />
-        <StatCard icon={AlertTriangle} title="Absent" value={3} change="Unexcused" changeType="negative" />
-        <StatCard icon={Timer} title="Overtime Today" value="42 hrs" change="18 employees" changeType="neutral" />
+        <StatCard
+          icon={UserCheck}
+          title="Present"
+          value={logs.filter((l) => l.clock_in_at).length}
+          change="Today"
+          changeType="neutral"
+        />
+        <StatCard
+          icon={Clock}
+          title="Open Sessions"
+          value={logs.filter((l) => !l.clock_out_at).length}
+          change="Currently clocked in"
+          changeType="neutral"
+        />
+        <StatCard
+          icon={AlertTriangle}
+          title="Completed"
+          value={logs.filter((l) => l.clock_out_at).length}
+          change="Clocked in & out"
+          changeType="neutral"
+        />
+        <StatCard
+          icon={Timer}
+          title="Entries"
+          value={logs.length}
+          change="Total records today"
+          changeType="neutral"
+        />
       </div>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Today's Log — Feb 27, 2026</CardTitle>
+          <CardTitle className="text-base">Today's Log — {todayLabel}</CardTitle>
         </CardHeader>
         <CardContent>
+          {isLoading && (
+            <div className="text-sm text-muted-foreground mb-4">
+              Loading attendance...
+            </div>
+          )}
+          {error && (
+            <div className="text-sm text-destructive mb-4">
+              Failed to load attendance.
+            </div>
+          )}
+
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Employee</TableHead>
+                <TableHead>User</TableHead>
                 <TableHead>Clock In</TableHead>
                 <TableHead>Clock Out</TableHead>
-                <TableHead>Hours</TableHead>
-                <TableHead>Overtime</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {attendanceToday.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>
-                    <p className="text-sm font-medium">{row.name}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{row.id}</p>
-                  </TableCell>
-                  <TableCell className="text-sm font-mono">{row.clockIn}</TableCell>
-                  <TableCell className="text-sm font-mono">{row.clockOut}</TableCell>
-                  <TableCell className="text-sm font-mono">{row.hours}</TableCell>
-                  <TableCell className="text-sm font-mono">{row.overtime}</TableCell>
-                  <TableCell>
-                    <StatusBadge
-                      status={row.status}
-                      label={row.status === "active" ? "On Time" : row.status === "pending" ? "In Progress" : "Late"}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
+              {logs.map((row) => {
+                const clockIn = format(new Date(row.clock_in_at), "HH:mm");
+                const clockOut = row.clock_out_at
+                  ? format(new Date(row.clock_out_at), "HH:mm")
+                  : "—";
+                const status =
+                  row.clock_out_at === null ? ("pending" as const) : ("active" as const);
+
+                return (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      <p className="text-sm font-medium">{row.user_email}</p>
+                    </TableCell>
+                    <TableCell className="text-sm font-mono">{clockIn}</TableCell>
+                    <TableCell className="text-sm font-mono">{clockOut}</TableCell>
+                    <TableCell>
+                      <StatusBadge
+                        status={status}
+                        label={status === "active" ? "Completed" : "In Progress"}
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
