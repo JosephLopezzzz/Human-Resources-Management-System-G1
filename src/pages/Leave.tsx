@@ -16,6 +16,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { differenceInCalendarDays } from "date-fns";
 import { useState } from "react";
+import { toast } from "@/components/ui/use-toast";
 
 const createLeaveSchema = z.object({
   leave_type_id: z.string().uuid("Select a leave type"),
@@ -53,27 +54,53 @@ const Leave = () => {
     const diff = differenceInCalendarDays(end, start) + 1;
     const days = diff > 0 ? diff : 1;
 
-    await createRequest({
-      userId: user.id,
-      email: user.email ?? "",
-      leaveTypeId: values.leave_type_id,
-      startDate: values.start_date,
-      endDate: values.end_date,
-      days,
-    });
+    try {
+      await createRequest({
+        userId: user.id,
+        email: user.email ?? "",
+        leaveTypeId: values.leave_type_id,
+        startDate: values.start_date,
+        endDate: values.end_date,
+        days,
+      });
 
-    setOpen(false);
-    form.reset();
+      toast({
+        title: "Leave request submitted",
+        description: `Requested ${days} day(s) of leave.`,
+      });
+
+      setOpen(false);
+      form.reset();
+    } catch (err) {
+      toast({
+        title: "Failed to submit leave request",
+        description: err instanceof Error ? err.message : "Something went wrong.",
+        variant: "destructive",
+      });
+    }
   }
 
   async function handleDecision(id: string, status: "approved" | "rejected") {
     if (!user) return;
-    await updateStatus({
-      id,
-      status,
-      approverId: user.id,
-      approverEmail: user.email ?? null,
-    });
+    try {
+      await updateStatus({
+        id,
+        status,
+        approverId: user.id,
+        approverEmail: user.email ?? null,
+      });
+
+      toast({
+        title: `Request ${status}`,
+        description: `Leave request has been ${status}.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Failed to update request",
+        description: err instanceof Error ? err.message : "Something went wrong.",
+        variant: "destructive",
+      });
+    }
   }
 
   const myRequests = requests.filter(

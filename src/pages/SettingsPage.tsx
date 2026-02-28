@@ -8,6 +8,7 @@ import { useSettings, useUpdateSetting, useUserRoles } from "@/hooks/useSettings
 import { useAuth } from "@/auth/useAuth";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useEffect, useState } from "react";
+import { toast } from "@/components/ui/use-toast";
 
 const SettingsPage = () => {
   const { user } = useAuth();
@@ -49,25 +50,49 @@ const SettingsPage = () => {
 
   async function saveGeneral() {
     if (!canEdit) return;
-    await updateSetting.mutateAsync({
-      key: "system.general",
-      value: {
-        name: systemName,
-        timezone,
-        workHoursPerDay: Number(workHours) || 8,
-      },
-    });
+    try {
+      await updateSetting.mutateAsync({
+        key: "system.general",
+        value: {
+          name: systemName,
+          timezone,
+          workHoursPerDay: Number(workHours) || 8,
+        },
+      });
+      toast({
+        title: "General settings saved",
+        description: "System configuration updated.",
+      });
+    } catch (err) {
+      toast({
+        title: "Failed to save settings",
+        description: err instanceof Error ? err.message : "Something went wrong.",
+        variant: "destructive",
+      });
+    }
   }
 
   async function saveCompany() {
     if (!canEdit) return;
-    await updateSetting.mutateAsync({
-      key: "company.info",
-      value: {
-        name: companyName,
-        registrationNumber,
-      },
-    });
+    try {
+      await updateSetting.mutateAsync({
+        key: "company.info",
+        value: {
+          name: companyName,
+          registrationNumber,
+        },
+      });
+      toast({
+        title: "Company info saved",
+        description: "Company details updated.",
+      });
+    } catch (err) {
+      toast({
+        title: "Failed to save company info",
+        description: err instanceof Error ? err.message : "Something went wrong.",
+        variant: "destructive",
+      });
+    }
   }
 
   return (

@@ -12,6 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import { toast } from "@/components/ui/use-toast";
 
 const createDepartmentSchema = z.object({
   code: z.string().min(1, "Code is required"),
@@ -45,17 +46,30 @@ const Departments = () => {
       ? Number(values.budget_amount.replace(/,/g, ""))
       : null;
 
-    await createDepartment({
-      code: values.code,
-      name: values.name,
-      manager_user_id: null,
-      parent_id: null,
-      budget_amount: numericBudget,
-      budget_currency: values.budget_currency,
-    });
+    try {
+      await createDepartment({
+        code: values.code,
+        name: values.name,
+        manager_user_id: null,
+        parent_id: null,
+        budget_amount: numericBudget,
+        budget_currency: values.budget_currency,
+      });
 
-    setOpen(false);
-    form.reset();
+      toast({
+        title: "Department created",
+        description: `${values.name} has been added.`,
+      });
+
+      setOpen(false);
+      form.reset();
+    } catch (err) {
+      toast({
+        title: "Failed to create department",
+        description: err instanceof Error ? err.message : "Something went wrong.",
+        variant: "destructive",
+      });
+    }
   }
 
   return (

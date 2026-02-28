@@ -16,6 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "@/components/ui/use-toast";
 
 const createEmployeeSchema = z.object({
   employee_code: z.string().min(1, "Employee ID is required"),
@@ -59,21 +60,34 @@ const Employees = () => {
   async function onSubmit(values: CreateEmployeeValues) {
     const numericSalary = Number(values.salary_amount.replace(/,/g, ""));
 
-    await createEmployee({
-      employee_code: values.employee_code,
-      first_name: values.first_name,
-      last_name: values.last_name,
-      email: values.email,
-      position: values.position,
-      status: values.status,
-      join_date: values.join_date || new Date().toISOString().slice(0, 10),
-      salary_amount: Number.isFinite(numericSalary) ? numericSalary : 0,
-      salary_currency: values.salary_currency,
-      department_id: null,
-    });
+    try {
+      await createEmployee({
+        employee_code: values.employee_code,
+        first_name: values.first_name,
+        last_name: values.last_name,
+        email: values.email,
+        position: values.position,
+        status: values.status,
+        join_date: values.join_date || new Date().toISOString().slice(0, 10),
+        salary_amount: Number.isFinite(numericSalary) ? numericSalary : 0,
+        salary_currency: values.salary_currency,
+        department_id: null,
+      });
 
-    setOpen(false);
-    form.reset();
+      toast({
+        title: "Employee created",
+        description: `${values.first_name} ${values.last_name} has been added.`,
+      });
+
+      setOpen(false);
+      form.reset();
+    } catch (err) {
+      toast({
+        title: "Failed to create employee",
+        description: err instanceof Error ? err.message : "Something went wrong.",
+        variant: "destructive",
+      });
+    }
   }
 
   const filtered = employees.filter((e) => {

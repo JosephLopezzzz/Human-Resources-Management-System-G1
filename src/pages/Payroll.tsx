@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePayroll } from "@/hooks/usePayroll";
 import { useAuth } from "@/auth/useAuth";
 import { format } from "date-fns";
+import { toast } from "@/components/ui/use-toast";
 
 const Payroll = () => {
   const { run, runLoading, runError, items, itemsLoading, itemsError, generateRun, generating, lockRun, locking } =
@@ -27,11 +28,35 @@ const Payroll = () => {
       : "No run yet";
 
   async function onGenerate() {
-    await generateRun();
+    try {
+      await generateRun();
+      toast({
+        title: "Payroll run ready",
+        description: "Current period payroll run has been created.",
+      });
+    } catch (err) {
+      toast({
+        title: "Failed to generate payroll",
+        description: err instanceof Error ? err.message : "Something went wrong.",
+        variant: "destructive",
+      });
+    }
   }
 
   async function onLock() {
-    await lockRun();
+    try {
+      await lockRun();
+      toast({
+        title: "Payroll locked",
+        description: "Current payroll run has been locked.",
+      });
+    } catch (err) {
+      toast({
+        title: "Failed to lock payroll",
+        description: err instanceof Error ? err.message : "Something went wrong.",
+        variant: "destructive",
+      });
+    }
   }
 
   return (

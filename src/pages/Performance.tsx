@@ -14,6 +14,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
+import { toast } from "@/components/ui/use-toast";
 
 const createCycleSchema = z.object({
   code: z.string().min(1, "Code is required"),
@@ -44,9 +45,21 @@ const Performance = () => {
   });
 
   async function onSubmit(values: CreateCycleValues) {
-    await createCycle(values);
-    setOpen(false);
-    form.reset();
+    try {
+      await createCycle(values);
+      toast({
+        title: "Review cycle created",
+        description: values.name,
+      });
+      setOpen(false);
+      form.reset();
+    } catch (err) {
+      toast({
+        title: "Failed to create review cycle",
+        description: err instanceof Error ? err.message : "Something went wrong.",
+        variant: "destructive",
+      });
+    }
   }
 
   return (
