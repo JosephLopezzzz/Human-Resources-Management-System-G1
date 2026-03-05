@@ -39,6 +39,23 @@ function getCurrentPeriod() {
   };
 }
 
+/** Fetch items for a specific run (e.g. History tab detail). */
+export function usePayrollItemsForRun(runId: string | null) {
+  return useQuery({
+    queryKey: ["payroll_items", runId],
+    enabled: !!runId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payroll_items")
+        .select("*")
+        .eq("run_id", runId!)
+        .order("user_email");
+      if (error) throw error;
+      return (data ?? []) as PayrollItem[];
+    },
+  });
+}
+
 export function usePayroll() {
   const queryClient = useQueryClient();
 

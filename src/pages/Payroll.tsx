@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatCard } from "@/components/StatCard";
 import { DollarSign, Lock, FileText, AlertTriangle, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { usePayroll } from "@/hooks/usePayroll";
+import { usePayroll, usePayrollItemsForRun } from "@/hooks/usePayroll";
 import { useAuth } from "@/auth/useAuth";
 import { format } from "date-fns";
 import { toast } from "@/components/ui/use-toast";

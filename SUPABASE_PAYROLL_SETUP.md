@@ -26,3 +26,17 @@ DROP POLICY IF EXISTS "your_old_policy_name" ON public.payroll_items;
 ```
 
 Then run the full migration again.
+
+---
+
+## Temporary admin role (for testing)
+
+In **Supabase → SQL Editor**, run (replace with your email):
+
+```sql
+UPDATE auth.users
+SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || '{"role": "admin"}'::jsonb
+WHERE email = 'your-email@example.com';
+```
+
+Then **log out** of the app and **log back in**. To remove admin later, set `role` to `"employee"` or delete the key.

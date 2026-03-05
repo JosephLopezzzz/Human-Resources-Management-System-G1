@@ -99,6 +99,18 @@
     @apply border-border;
   }
 
+  @media print {
+    aside,
+    header,
+    .no-print {
+      display: none !important;
+    }
+    main {
+      margin: 0 !important;
+      padding: 1rem !important;
+    }
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'IBM Plex Sans', system-ui, sans-serif;

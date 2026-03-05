@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plus, Search, Download } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useAuth } from "@/auth/useAuth";
 import { format } from "date-fns";

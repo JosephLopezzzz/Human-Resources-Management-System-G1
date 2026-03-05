@@ -14,6 +14,8 @@ import Departments from "./pages/Departments";
 import Attendance from "./pages/Attendance";
 import Leave from "./pages/Leave";
 import Payroll from "./pages/Payroll";
+import MyPay from "./pages/MyPay";
+import Reports from "./pages/Reports";
 import Performance from "./pages/Performance";
 import AuditLogs from "./pages/AuditLogs";
 import SettingsPage from "./pages/SettingsPage";
