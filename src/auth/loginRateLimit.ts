@@ -40,6 +40,14 @@ export function getLockRemainingMs(identifier: string, now = Date.now()): number
   return Math.max(0, s.lockedUntil - now);
 }
 
+/** Returns current failure count for this identifier (0 if none or locked). */
+export function getFailureCount(identifier: string, now = Date.now()): number {
+  const s = readState(identifier);
+  if (!s) return 0;
+  if (s.lockedUntil > now) return 0; // locked, don't expose count
+  return s.failures;
+}
+
 export function registerLoginFailure(identifier: string, now = Date.now()) {
   const prev = readState(identifier);
   const failures = (prev?.failures ?? 0) + 1;
