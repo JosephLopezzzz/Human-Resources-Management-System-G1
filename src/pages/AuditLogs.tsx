@@ -10,10 +10,10 @@ import { useState } from "react";
 import { useAuditLogs } from "@/hooks/useAuditLogs";
 
 const categoryColors: Record<string, string> = {
-  auth: "bg-info/10 text-info border-info/20",
+  auth: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-800",
   employee: "bg-primary/10 text-primary border-primary/20",
-  payroll: "bg-success/10 text-success border-success/20",
-  leave: "bg-warning/10 text-warning border-warning/20",
+  payroll: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800",
+  leave: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
 };
 
 const AuditLogs = () => {
@@ -38,7 +38,7 @@ const AuditLogs = () => {
               <Input placeholder="Search by action or actor..." className="pl-8 h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-44 h-9"><SelectValue placeholder="All Categories" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="auth">Authentication</SelectItem>
@@ -66,10 +66,7 @@ const AuditLogs = () => {
                 <TableHead>Timestamp</TableHead>
                 <TableHead>Actor</TableHead>
                 <TableHead>Action</TableHead>
-                <TableHead>Category</TableHead>
                 <TableHead>Entity</TableHead>
-                <TableHead>Entity ID</TableHead>
-                <TableHead>IP Address</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -79,22 +76,18 @@ const AuditLogs = () => {
                     {new Date(log.timestamp).toISOString().replace("T", " ").slice(0, 19)}
                   </TableCell>
                   <TableCell className="text-sm">{log.actor_email ?? "system"}</TableCell>
-                  <TableCell className="text-sm font-mono font-medium">{log.action}</TableCell>
                   <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={categoryColors[log.category] ?? ""}
-                    >
-                      {log.category}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-mono font-medium">{log.action}</span>
+                      <Badge
+                        variant="outline"
+                        className={categoryColors[log.category] ?? ""}
+                      >
+                        {log.category}
+                      </Badge>
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm">{log.entity_type}</TableCell>
-                  <TableCell className="text-sm font-mono text-muted-foreground">
-                    {log.entity_id ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-sm font-mono text-muted-foreground">
-                    {log.ip_address ?? "—"}
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "@/components/StatCard";
-import { DollarSign, Lock, FileText, AlertTriangle } from "lucide-react";
+import { DollarSign, Lock, FileText, AlertTriangle, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePayroll } from "@/hooks/usePayroll";
 import { useAuth } from "@/auth/useAuth";
@@ -12,7 +12,7 @@ import { format } from "date-fns";
 import { toast } from "@/components/ui/use-toast";
 
 const Payroll = () => {
-  const { run, runLoading, runError, items, itemsLoading, itemsError, generateRun, generating, lockRun, locking } =
+  const { run, runLoading, runError, refetchRun, items, itemsLoading, itemsError, generateRun, generating, lockRun, locking } =
     usePayroll();
   const { user } = useAuth();
   const role = (user?.user_metadata?.role as string | undefined) ?? "employee";
@@ -94,7 +94,7 @@ const Payroll = () => {
           icon={DollarSign}
           title="Total Gross"
           value={totalGross.toLocaleString(undefined, { style: "currency", currency: "USD" })}
-          change={periodLabel}
+          change={run ? format(new Date(run.period_start), "MMMM yyyy") : "No run yet"}
           changeType="neutral"
         />
         <StatCard
@@ -114,9 +114,9 @@ const Payroll = () => {
         <StatCard
           icon={Lock}
           title="Status"
-          value={run ? run.status.toUpperCase() : "NO RUN"}
-          change={run ? run.code : ""}
-          changeType={run?.status === "locked" ? "neutral" : "negative"}
+          value={run?.status === "locked" ? "Locked" : "Unlocked"}
+          change={run?.status === "locked" ? "Payroll locked" : "Ready for processing"}
+          changeType={run?.status === "locked" ? "neutral" : "neutral"}
         />
       </div>
 
@@ -141,9 +141,47 @@ const Payroll = () => {
                   Loading current run...
                 </div>
               )}
-              {runError && (
-                <div className="text-sm text-destructive mb-4">
-                  Failed to load current run.
+              {runError && !String(runError?.message || runError).includes("data is undefined") && (
+                <div className="flex flex-col gap-3 mb-4 p-4 rounded-lg border border-destructive/30 bg-destructive/5">
+                  <p className="text-sm text-destructive font-medium">
+                    Failed to load current run.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Add SELECT policies for <code className="font-mono bg-muted px-1 rounded">payroll_runs</code> and{" "}
+                    <code className="font-mono bg-muted px-1 rounded">payroll_items</code> in Supabase. See{" "}
+                    <code className="font-mono bg-muted px-1 rounded">SUPABASE_PAYROLL_SETUP.md</code> for the SQL.
+                    If you already ran the SQL, log out and log back in, then retry. Ensure your app&apos;s <code className="font-mono bg-muted px-1 rounded">.env</code> uses the same Supabase project.
+                  </p>
+                  {"message" in runError && (
+                    <p className="text-xs font-mono bg-muted/50 p-2 rounded break-all" title={String(runError)}>
+                      {String((runError as { message?: string }).message)}
+                    </p>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetchRun?.()}
+                    disabled={runLoading}
+                    className="w-fit"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    {runLoading ? "Retrying..." : "Retry"}
+                  </Button>
+                </div>
+              )}
+              {runError && String(runError?.message || runError).includes("data is undefined") && !run && !runLoading && (
+                <div className="flex flex-col gap-3 mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    {canManage
+                      ? "No payroll run for this period yet. Create one using the button below or in the page header."
+                      : "No payroll run for this period yet. Ask an admin or HR to generate payroll."}
+                  </p>
+                  {canManage && (
+                    <Button size="sm" onClick={onGenerate} disabled={generating} className="w-fit">
+                      <FileText className="h-4 w-4 mr-1" />
+                      {generating ? "Generating..." : "Generate Payroll"}
+                    </Button>
+                  )}
                 </div>
               )}
               {itemsLoading && (

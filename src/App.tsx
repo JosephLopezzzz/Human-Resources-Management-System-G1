@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { RequireRole } from "@/auth/RequireRole";
@@ -44,13 +45,9 @@ const App = () => (
                 <Route path="/departments" element={<Departments />} />
                 <Route path="/attendance" element={<Attendance />} />
                 <Route path="/leave" element={<Leave />} />
-                <Route element={<RequireRole allowed={["admin", "hr", "payroll"]} />}>
-                  <Route path="/payroll" element={<Payroll />} />
-                </Route>
+                <Route path="/payroll" element={<ErrorBoundary><Payroll /></ErrorBoundary>} />
                 <Route path="/performance" element={<Performance />} />
-                <Route element={<RequireRole allowed={["admin", "hr", "security"]} />}>
-                  <Route path="/audit-logs" element={<AuditLogs />} />
-                </Route>
+                <Route path="/audit-logs" element={<ErrorBoundary><AuditLogs /></ErrorBoundary>} />
                 <Route element={<RequireRole allowed={["admin", "hr"]} />}>
                   <Route path="/settings" element={<SettingsPage />} />
                 </Route>

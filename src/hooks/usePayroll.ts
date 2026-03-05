@@ -44,6 +44,8 @@ export function usePayroll() {
 
   const runsQuery = useQuery({
     queryKey: ["payroll_runs", "current"],
+    retry: false,
+    refetchOnMount: "always",
     queryFn: async () => {
       const { code } = getCurrentPeriod();
       const { data, error } = await supabase
@@ -52,7 +54,10 @@ export function usePayroll() {
         .eq("code", code)
         .limit(1);
       if (error) throw error;
-      return (data ?? [])[0] as PayrollRun | undefined;
+      // Success with no row: return undefined (no run for this period)
+      if (data == null) return undefined;
+      const row = Array.isArray(data) ? data[0] : data;
+      return row as PayrollRun | undefined;
     },
   });
 
@@ -86,8 +91,8 @@ export function usePayroll() {
         return existing[0] as PayrollRun;
       }
 
-      // Simple example: create run without auto-calculation.
-      const { data, error } = await supabase
+      // Create the run
+      const { data: runData, error: runError } = await supabase
         .from("payroll_runs")
         .insert({
           code,
@@ -97,8 +102,41 @@ export function usePayroll() {
         })
         .select("*")
         .single();
-      if (error) throw error;
-      return data as PayrollRun;
+      if (runError) throw runError;
+      const run = runData as PayrollRun;
+
+      // Create payroll items from employees (regular and probation only)
+      const { data: employees, error: empError } = await supabase
+        .from("employees")
+        .select("id, email, salary_amount")
+        .in("status", ["regular", "probation"]);
+      if (empError) throw empError;
+
+      const items = (employees ?? []).map((emp: { id: string; email: string; salary_amount: number }) => {
+        const base = Number(emp.salary_amount) || 0;
+        const allowances = 0;
+        const deductions = 0;
+        const tax = 0;
+        const netPay = base + allowances - deductions - tax;
+        return {
+          run_id: run.id,
+          user_id: emp.id,
+          user_email: emp.email || "",
+          base_salary: base,
+          allowances,
+          deductions,
+          tax,
+          net_pay: netPay,
+          status: "pending",
+        };
+      });
+
+      if (items.length > 0) {
+        const { error: itemsError } = await supabase.from("payroll_items").insert(items);
+        if (itemsError) throw itemsError;
+      }
+
+      return run;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll_runs", "current"] });
@@ -125,6 +163,7 @@ export function usePayroll() {
     run: runsQuery.data,
     runLoading: runsQuery.isLoading,
     runError: runsQuery.error,
+    refetchRun: runsQuery.refetch,
     items: itemsQuery.data ?? [],
     itemsLoading: itemsQuery.isLoading,
     itemsError: itemsQuery.error,
