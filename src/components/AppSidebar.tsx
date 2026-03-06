@@ -13,6 +13,7 @@ import {
   LogOut,
   UserPlus,
   ShieldCheck,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -122,6 +123,13 @@ export function AppSidebar() {
             {!collapsed && <span>Settings</span>}
           </NavLink>
         )}
+        <NavLink
+          to="/mfa"
+          className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent"
+        >
+          <Shield className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>Two-factor auth</span>}
+        </NavLink>
         <button
           onClick={onLogout}
           className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent w-full"

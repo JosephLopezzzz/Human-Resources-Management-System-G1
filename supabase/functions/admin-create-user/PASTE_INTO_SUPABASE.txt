@@ -1,3 +1,14 @@
+PASTE THIS ENTIRE FILE INTO SUPABASE:
+Edge Functions → admin-create-user → Code tab → index.ts
+
+Replace EVERYTHING in the editor with the contents below, then click "Deploy updates".
+
+IMPORTANT – If you get 401 "Unauthorized" when creating users:
+• The function validates the JWT inside the code. If your project uses "Verify JWT" at the gateway, turn it OFF for this function so the request reaches the function (Dashboard: Function → Settings → set "Verify JWT" to off, or deploy via CLI with verify_jwt = false in config.toml).
+• Ensure your app's .env VITE_SUPABASE_URL points to the SAME project where this function is deployed.
+
+-------- START OF admin-create-user/index.ts (copy from next line) --------
+
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -79,16 +90,15 @@ serve(async (req) => {
   }
 
   const body = (await req.json().catch(() => null)) as
-    | { email?: string; password?: string; name?: string; role?: string; username?: string }
+    | { email?: string; password?: string; name?: string; role?: string }
     | null;
 
   if (!body?.email || !body?.password) {
     return jsonResponse(JSON.stringify({ error: "Missing email or password" }), 400, req);
   }
 
-  const { email, password, name, role: newRole, username: rawUsername } = body;
+  const { email, password, name, role: newRole } = body;
   const assignedRole = (newRole ?? "employee").trim().toLowerCase();
-  const username = (rawUsername ?? name ?? "user").trim().toLowerCase().replace(/\s+/g, "_") || "user";
 
   // HR Manager can only assign: hr_officer, department_manager, employee
   const hrManagerAllowedRoles = ["hr_officer", "department_manager", "employee"];
@@ -111,20 +121,12 @@ serve(async (req) => {
     user_metadata: {
       name: name ?? "User",
       role: assignedRole,
-      username,
     },
   });
 
   if (error) {
     return jsonResponse(JSON.stringify({ error: error.message }), 400, req);
   }
-
-  await adminClient
-    .from("user_login")
-    .insert({ email, username_lower: username })
-    .catch(() => {
-      // Duplicate username or table missing: log but don't fail user creation
-    });
 
   // Best-effort audit log for the successful admin create user action.
   const ip =
@@ -156,3 +158,5 @@ serve(async (req) => {
     headers: { "Content-Type": "application/json", ...corsHeaders(req) },
   });
 });
+
+-------- END OF admin-create-user/index.ts --------

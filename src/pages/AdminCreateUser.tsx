@@ -1,6 +1,6 @@
 import React from "react";
 import { useAuth } from "@/auth/useAuth";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase, invokeFunction } from "@/lib/supabaseClient";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import {
 import { Eye, EyeOff } from "lucide-react";
 
 export default function AdminCreateUser() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const rawRole = (user?.user_metadata?.role as string | undefined) ?? "employee";
   const role = getCanonicalRole(rawRole) as RoleKey;
   const canCreate = canCreateUsers(role);
@@ -26,6 +26,7 @@ export default function AdminCreateUser() {
 
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
+  const [username, setUsername] = React.useState("");
   const [selectedRole, setSelectedRole] = React.useState<RoleKey>(defaultRole);
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -65,25 +66,34 @@ export default function AdminCreateUser() {
     setLoading(true);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("admin-create-user", {
-        body: {
-          email,
-          password,
-          name: name || "User",
-          role: selectedRole,
-        },
+      const { data: { session: freshSession }, error: refreshError } = await supabase.auth.refreshSession();
+      const token = freshSession?.access_token;
+      if (refreshError || !token) {
+        setError("Session expired or invalid. Please log out and log back in, then try again.");
+        setLoading(false);
+        return;
+      }
+      const { data, errorMessage } = await invokeFunction<
+        { email: string; password: string; name: string; role: string },
+        { user?: { id?: string } }
+      >("admin-create-user", token, {
+        email,
+        password,
+        name: name || "User",
+        role: selectedRole,
       });
 
-      if (fnError) {
-        setError(fnError.message);
+      if (errorMessage) {
+        setError(errorMessage);
         return;
       }
 
-      setSuccess(`User created with id ${data.user?.id ?? ""}`);
+      setSuccess(`User created with id ${data?.user?.id ?? ""}`);
       setEmail("");
       setPassword("");
       setConfirmPassword("");
       setName("");
+      setUsername("");
       setSelectedRole(defaultRole);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create user.");
@@ -125,6 +135,21 @@ export default function AdminCreateUser() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="User name"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="username">Username (for login)</Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="e.g. jdoe"
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">
+                Optional. They can sign in with this instead of email. If empty, derived from name.
+              </p>
             </div>
 
             <div className="space-y-2">

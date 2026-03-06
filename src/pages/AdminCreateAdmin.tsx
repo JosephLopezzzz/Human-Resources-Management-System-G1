@@ -1,6 +1,6 @@
 import React from "react";
 import { useAuth } from "@/auth/useAuth";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase, invokeFunction } from "@/lib/supabaseClient";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,13 +14,14 @@ import { Eye, EyeOff, ShieldAlert } from "lucide-react";
 const CONFIRM_PHRASE = "CREATE ADMIN";
 
 export default function AdminCreateAdmin() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const rawRole = (user?.user_metadata?.role as string | undefined) ?? "employee";
   const role = getCanonicalRole(rawRole) as RoleKey;
   const canCreate = isSystemAdmin(role);
 
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
+  const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
@@ -71,25 +72,35 @@ export default function AdminCreateAdmin() {
 
     setLoading(true);
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("admin-create-user", {
-        body: {
-          email,
-          password,
-          name: name || "Administrator",
-          role: "system_admin",
-        },
+      const { data: { session: freshSession }, error: refreshError } = await supabase.auth.refreshSession();
+      const token = freshSession?.access_token;
+      if (refreshError || !token) {
+        setError("Session expired or invalid. Please log out and log back in, then try again.");
+        setLoading(false);
+        return;
+      }
+      const { data, errorMessage } = await invokeFunction<
+        { email: string; password: string; name: string; role: string; username?: string },
+        { user?: { id?: string } }
+      >("admin-create-user", token, {
+        email,
+        password,
+        name: name || "Administrator",
+        role: "system_admin",
+        username: username.trim() || undefined,
       });
 
-      if (fnError) {
-        setError(fnError.message);
+      if (errorMessage) {
+        setError(errorMessage);
         return;
       }
 
-      setSuccess(`System Administrator created. User id: ${data.user?.id ?? ""}. This action is logged in Audit Logs (ADMIN_CREATE_ADMIN).`);
+      setSuccess(`System Administrator created. User id: ${data?.user?.id ?? ""}. This action is logged in Audit Logs (ADMIN_CREATE_ADMIN).`);
       setEmail("");
       setPassword("");
       setConfirmPassword("");
       setName("");
+      setUsername("");
       setConfirmPhrase("");
       setAcknowledge(false);
     } catch (err) {
@@ -140,6 +151,21 @@ export default function AdminCreateAdmin() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Administrator name"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="username">Username (for login)</Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="e.g. admin1"
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">
+                Optional. They can sign in with this instead of email. If empty, derived from name.
+              </p>
             </div>
 
             <div className="space-y-2">

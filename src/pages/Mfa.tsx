@@ -102,6 +102,7 @@ export default function Mfa() {
   }
 
   const canVerify = code.length === 6 && !busy;
+  const hasNoFactorYet = !factorId && !qrCode;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
@@ -109,13 +110,22 @@ export default function Mfa() {
         <CardHeader>
           <CardTitle>Two-factor authentication</CardTitle>
           <CardDescription>
-            Enter a 6-digit code from your authenticator app. You’ll be asked again every 7 days.
+            {hasNoFactorYet
+              ? "Set up an authenticator app (e.g. Google Authenticator) to secure your account. Required for privileged actions like Create User and Create Admin."
+              : qrCode
+                ? "Scan the QR code with your authenticator app, then enter the 6-digit code below to finish setup."
+                : "Enter a 6-digit code from your authenticator app. You’ll be asked again every 7 days."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {hasNoFactorYet && (
+            <p className="text-sm text-muted-foreground">
+              You need 2FA enabled to use <strong>Create User</strong> and <strong>Create Admin</strong>. Set it up once and you’re done.
+            </p>
+          )}
           {!factorId && (
             <Button type="button" className="w-full" onClick={enrollTotp} disabled={busy}>
-              Set up authenticator
+              {hasNoFactorYet ? "Set up authenticator app" : "Add another factor"}
             </Button>
           )}
 
@@ -149,6 +159,15 @@ export default function Mfa() {
             <Button type="button" className="w-full" onClick={verifyCode} disabled={!canVerify}>
               Verify
             </Button>
+          </div>
+          <div className="text-center">
+            <button
+              type="button"
+              className="text-sm text-muted-foreground hover:text-foreground underline"
+              onClick={() => navigate(from)}
+            >
+              Back to app
+            </button>
           </div>
         </CardContent>
       </Card>

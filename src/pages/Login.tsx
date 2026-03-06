@@ -23,7 +23,7 @@ export default function Login() {
 
   const from = ((location.state as LocationState)?.from?.pathname as string | undefined) ?? "/";
 
-  const [email, setEmail] = React.useState("");
+  const [emailOrUsername, setEmailOrUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -42,17 +42,17 @@ export default function Login() {
 
   React.useEffect(() => {
     const id = window.setInterval(() => {
-      setLockRemainingMs(email ? getLockRemainingMs(email) : 0);
+      setLockRemainingMs(emailOrUsername ? getLockRemainingMs(emailOrUsername) : 0);
     }, 500);
     return () => window.clearInterval(id);
-  }, [email]);
+  }, [emailOrUsername]);
 
   async function onPasswordLogin(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setForgotPasswordSent(false);
 
-    const locked = email ? getLockRemainingMs(email) : 0;
+    const locked = emailOrUsername ? getLockRemainingMs(emailOrUsername) : 0;
     if (locked > 0) {
       setLockRemainingMs(locked);
       setError("Too many failed attempts. Please wait before trying again.");
@@ -62,13 +62,36 @@ export default function Login() {
 
     setSubmitting(true);
     try {
+      const login = emailOrUsername.trim();
+      let email = login;
+      if (!login.includes("@")) {
+        const { data: resolved, error: rpcError } = await supabase.rpc("get_email_for_login", {
+          login,
+        });
+        if (rpcError) {
+          setError("Could not look up account. Use your email if you don't have a username.");
+          setSubmitting(false);
+          return;
+        }
+        if (!resolved) {
+          setError("Invalid email or username. If you only sign in with Google, use “Continue with Google” above.");
+          registerLoginFailure(login);
+          setLockRemainingMs(getLockRemainingMs(login));
+          setPassword("");
+          setEmailOrUsername("");
+          setSubmitting(false);
+          return;
+        }
+        email = resolved;
+      }
+
       const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
       if (signInError) {
-        registerLoginFailure(email);
-        setLockRemainingMs(getLockRemainingMs(email));
+        registerLoginFailure(emailOrUsername);
+        setLockRemainingMs(getLockRemainingMs(emailOrUsername));
         setPassword("");
-        setEmail("");
+        setEmailOrUsername("");
         const msg = signInError.message;
         if (
           msg.toLowerCase().includes("invalid") ||
@@ -84,14 +107,14 @@ export default function Login() {
         return;
       }
 
-      resetLoginFailures(email);
+      resetLoginFailures(emailOrUsername);
       setLockRemainingMs(0);
       // AuthProvider will redirect (including to /mfa if due).
     } catch (err) {
-      registerLoginFailure(email);
-      setLockRemainingMs(email ? getLockRemainingMs(email) : 0);
+      registerLoginFailure(emailOrUsername);
+      setLockRemainingMs(emailOrUsername ? getLockRemainingMs(emailOrUsername) : 0);
       setPassword("");
-      setEmail("");
+      setEmailOrUsername("");
       setError(err instanceof Error ? err.message : "Login failed.");
     } finally {
       window.setTimeout(() => setSubmitting(false), 500);
@@ -100,9 +123,19 @@ export default function Login() {
 
   async function onForgotPassword(e: React.MouseEvent) {
     e.preventDefault();
-    if (!email.trim()) {
-      setError("Enter your email above, then click Forgot password.");
+    const login = emailOrUsername.trim();
+    if (!login) {
+      setError("Enter your email or username above, then click Forgot password.");
       return;
+    }
+    let email = login;
+    if (!login.includes("@")) {
+      const { data: resolved, error: rpcError } = await supabase.rpc("get_email_for_login", { login });
+      if (rpcError || !resolved) {
+        setError("Enter your email above for password reset (username lookup not available for reset).");
+        return;
+      }
+      email = resolved;
     }
     setError(null);
     setForgotPasswordSent(false);
@@ -137,7 +170,7 @@ export default function Login() {
   }
 
   const locked = lockRemainingMs > 0;
-  const disabled = submitting || !email || !password || locked;
+  const disabled = submitting || !emailOrUsername || !password || locked;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
@@ -172,14 +205,14 @@ export default function Login() {
 
           <form onSubmit={onPasswordLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="emailOrUsername">Email / Username</Label>
               <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
+                id="emailOrUsername"
+                type="text"
+                autoComplete="username"
+                value={emailOrUsername}
+                onChange={(e) => setEmailOrUsername(e.target.value)}
+                placeholder="admin1 or you@company.com"
                 disabled={submitting}
               />
             </div>
@@ -226,9 +259,9 @@ export default function Login() {
               </p>
             )}
 
-            {!locked && email && getFailureCount(email) > 0 && getFailureCount(email) < 5 && (
+            {!locked && emailOrUsername && getFailureCount(emailOrUsername) > 0 && getFailureCount(emailOrUsername) < 5 && (
               <p className="text-sm text-amber-600 dark:text-amber-400">
-                {5 - getFailureCount(email)} attempt(s) remaining before lockout.
+                {5 - getFailureCount(emailOrUsername)} attempt(s) remaining before lockout.
               </p>
             )}
 

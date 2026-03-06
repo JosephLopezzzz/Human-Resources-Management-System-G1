@@ -389,7 +389,8 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.admin-create-user]
 enabled = true
-verify_jwt = true
+# Let the function validate the JWT itself (getUser(token)); avoids gateway 401 before request reaches the function.
+verify_jwt = false
 import_map = "./functions/admin-create-user/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
