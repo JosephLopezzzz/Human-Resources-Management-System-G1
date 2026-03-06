@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, ChevronRight } from "lucide-react";
 import { useDepartments } from "@/hooks/useDepartments";
 import { useAuth } from "@/auth/useAuth";
+import { getCanonicalRole, canManageDepartments } from "@/auth/roles";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -26,8 +27,8 @@ type CreateDepartmentValues = z.infer<typeof createDepartmentSchema>;
 const Departments = () => {
   const { departments, isLoading, error, createDepartment, creating } = useDepartments();
   const { user } = useAuth();
-  const role = (user?.user_metadata?.role as string | undefined) ?? "employee";
-  const canManage = role === "admin" || role === "hr";
+  const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
+  const canManage = canManageDepartments(role);
 
   const [open, setOpen] = useState(false);
 

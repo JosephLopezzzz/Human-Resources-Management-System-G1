@@ -10,6 +10,7 @@ import { Plus, Search, Download } from "lucide-react";
 import { useState, useRef } from "react";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useAuth } from "@/auth/useAuth";
+import { getCanonicalRole, canManageEmployees } from "@/auth/roles";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -35,8 +36,8 @@ type CreateEmployeeValues = z.infer<typeof createEmployeeSchema>;
 const Employees = () => {
   const { employees, isLoading, error, createEmployee, creating } = useEmployees();
   const { user } = useAuth();
-  const role = (user?.user_metadata?.role as string | undefined) ?? "employee";
-  const canManage = role === "admin" || role === "hr";
+  const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
+  const canManage = canManageEmployees(role);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");

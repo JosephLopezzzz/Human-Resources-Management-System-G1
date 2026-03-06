@@ -19,7 +19,7 @@ function renderWithAuth(ctx: Partial<AuthContextValue>) {
     <AuthContext.Provider value={value}>
       <MemoryRouter initialEntries={["/protected"]}>
         <Routes>
-          <Route element={<RequireRole allowed={["admin"]} />}>
+          <Route element={<RequireRole allowed={["system_admin"]} />}>
             <Route path="/protected" element={<div>secret</div>} />
           </Route>
           <Route path="/" element={<div>home</div>} />
@@ -53,6 +53,5 @@ describe("RequireRole", () => {
 
     expect(screen.getByText("home")).toBeInTheDocument();
   });
-}
-);
+});
 

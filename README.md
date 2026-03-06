@@ -59,12 +59,14 @@ React + Vite + TypeScript + Supabase. Features: Dashboard, Employees, Department
 
 ## Roles
 
-The app reads `user_metadata.role` or `app_metadata.role` from Supabase Auth (e.g. `admin`, `hr`, `payroll`, `employee`). To set a user to admin temporarily, run in SQL Editor:
+The app uses role-based access with a hierarchy. Roles are stored in `user_metadata.role`. Supported values: `system_admin`, `hr_manager`, `hr_officer`, `payroll_officer`, `finance_manager`, `department_manager`, `employee`. Legacy values `admin`, `hr`, `payroll`, `manager` are mapped to these. Only **System Administrator** and **HR Manager** can create user accounts (and only roles below them). See **SECURITY.md** for full role descriptions.
+
+To set a user to System Administrator (e.g. initial setup), run in SQL Editor:
 
 ```sql
 UPDATE auth.users
-SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || '{"role": "admin"}'::jsonb
+SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || '{"role": "system_admin"}'::jsonb
 WHERE email = 'user@example.com';
 ```
 
-Then log out and log back in.
+Legacy: `"role": "admin"` still works and is treated as System Administrator. Then log out and log back in.

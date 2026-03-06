@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { RequireRole } from "@/auth/RequireRole";
+import { ROUTE_ROLES } from "@/auth/roles";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import Departments from "./pages/Departments";
@@ -23,6 +24,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Mfa from "./pages/Mfa";
 import AdminCreateUser from "./pages/AdminCreateUser";
+import AdminCreateAdmin from "./pages/AdminCreateAdmin";
 
 const queryClient = new QueryClient();
 
@@ -40,17 +42,24 @@ const App = () => (
             <Route element={<RequireAuth />}>
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Dashboard />} />
-                <Route element={<RequireRole allowed={["admin"]} />}>
+                <Route element={<RequireRole allowed={ROUTE_ROLES["/admin/users/new"]} />}>
                   <Route path="/admin/users/new" element={<AdminCreateUser />} />
+                </Route>
+                <Route element={<RequireRole allowed={ROUTE_ROLES["/admin/create-admin"]} />}>
+                  <Route path="/admin/create-admin" element={<AdminCreateAdmin />} />
                 </Route>
                 <Route path="/employees" element={<Employees />} />
                 <Route path="/departments" element={<Departments />} />
                 <Route path="/attendance" element={<Attendance />} />
                 <Route path="/leave" element={<Leave />} />
-                <Route path="/payroll" element={<ErrorBoundary><Payroll /></ErrorBoundary>} />
+                <Route element={<RequireRole allowed={ROUTE_ROLES["/payroll"]} />}>
+                  <Route path="/payroll" element={<ErrorBoundary><Payroll /></ErrorBoundary>} />
+                </Route>
                 <Route path="/performance" element={<Performance />} />
-                <Route path="/audit-logs" element={<ErrorBoundary><AuditLogs /></ErrorBoundary>} />
-                <Route element={<RequireRole allowed={["admin", "hr"]} />}>
+                <Route element={<RequireRole allowed={ROUTE_ROLES["/audit-logs"]} />}>
+                  <Route path="/audit-logs" element={<ErrorBoundary><AuditLogs /></ErrorBoundary>} />
+                </Route>
+                <Route element={<RequireRole allowed={ROUTE_ROLES["/settings"]} />}>
                   <Route path="/settings" element={<SettingsPage />} />
                 </Route>
               </Route>

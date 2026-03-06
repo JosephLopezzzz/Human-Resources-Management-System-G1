@@ -8,6 +8,7 @@ import { DollarSign, Lock, FileText, AlertTriangle, RefreshCw } from "lucide-rea
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePayroll, usePayrollItemsForRun } from "@/hooks/usePayroll";
 import { useAuth } from "@/auth/useAuth";
+import { getCanonicalRole, canManagePayroll, canApprovePayrollOrViewReports } from "@/auth/roles";
 import { format } from "date-fns";
 import { toast } from "@/components/ui/use-toast";
 
@@ -15,8 +16,8 @@ const Payroll = () => {
   const { run, runLoading, runError, refetchRun, items, itemsLoading, itemsError, generateRun, generating, lockRun, locking } =
     usePayroll();
   const { user } = useAuth();
-  const role = (user?.user_metadata?.role as string | undefined) ?? "employee";
-  const canManage = ["admin", "hr", "payroll"].includes(role);
+  const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
+  const canManage = canManagePayroll(role) || canApprovePayrollOrViewReports(role);
 
   const totalGross = items.reduce((sum, i) => sum + i.base_salary + i.allowances, 0);
   const totalNet = items.reduce((sum, i) => sum + i.net_pay, 0);

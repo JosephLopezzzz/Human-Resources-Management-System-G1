@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus } from "lucide-react";
 import { useLeaveBalances, useLeaveMutations, useLeaveRequests, useLeaveTypes } from "@/hooks/useLeave";
 import { useAuth } from "@/auth/useAuth";
+import { getCanonicalRole, canApproveLeave } from "@/auth/roles";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -28,8 +29,8 @@ type CreateLeaveValues = z.infer<typeof createLeaveSchema>;
 
 const Leave = () => {
   const { user } = useAuth();
-  const role = (user?.user_metadata?.role as string | undefined) ?? "employee";
-  const isApprover = role === "admin" || role === "hr";
+  const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
+  const isApprover = canApproveLeave(role);
 
   const { data: types = [] } = useLeaveTypes();
   const { data: requests = [], isLoading: loadingRequests, error: requestsError } = useLeaveRequests();

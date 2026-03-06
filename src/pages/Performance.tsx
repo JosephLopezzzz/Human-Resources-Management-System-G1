@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Plus } from "lucide-react";
 import { useReviewCycles, useKpis, usePerformanceMutations } from "@/hooks/usePerformance";
 import { useAuth } from "@/auth/useAuth";
+import { getCanonicalRole, canManagePerformance } from "@/auth/roles";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -26,8 +27,8 @@ type CreateCycleValues = z.infer<typeof createCycleSchema>;
 
 const Performance = () => {
   const { user } = useAuth();
-  const role = (user?.user_metadata?.role as string | undefined) ?? "employee";
-  const canManage = role === "admin" || role === "hr";
+  const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
+  const canManage = canManagePerformance(role);
 
   const { data: cycles = [], isLoading: cyclesLoading, error: cyclesError } = useReviewCycles();
   const { data: kpis = [], isLoading: kpisLoading, error: kpisError } = useKpis();

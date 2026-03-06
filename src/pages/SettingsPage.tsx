@@ -6,14 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings, useUpdateSetting, useUserRoles } from "@/hooks/useSettings";
 import { useAuth } from "@/auth/useAuth";
+import { getCanonicalRole, canEditSettings } from "@/auth/roles";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 
 const SettingsPage = () => {
   const { user } = useAuth();
-  const role = (user?.user_metadata?.role as string | undefined) ?? "employee";
-  const canEdit = role === "admin" || role === "hr";
+  const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
+  const canEdit = canEditSettings(role);
 
   const { data: settings = [], isLoading: settingsLoading, error: settingsError } = useSettings();
   const updateSetting = useUpdateSetting();
@@ -209,7 +210,7 @@ const SettingsPage = () => {
 
               {!canEdit && (
                 <p className="text-xs text-muted-foreground mt-3">
-                  Only admins and HR can modify role assignments.
+                  Only the System Administrator can modify settings and role assignments.
                 </p>
               )}
             </CardContent>

@@ -6,31 +6,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  getCanonicalRole,
-  canCreateUsers,
-  getAssignableRolesFor,
-  ROLE_LABELS,
-  type RoleKey,
-} from "@/auth/roles";
-import { Eye, EyeOff } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { getCanonicalRole, isSystemAdmin, type RoleKey } from "@/auth/roles";
+import { Eye, EyeOff, ShieldAlert } from "lucide-react";
 
-export default function AdminCreateUser() {
+const CONFIRM_PHRASE = "CREATE ADMIN";
+
+export default function AdminCreateAdmin() {
   const { user } = useAuth();
   const rawRole = (user?.user_metadata?.role as string | undefined) ?? "employee";
   const role = getCanonicalRole(rawRole) as RoleKey;
-  const canCreate = canCreateUsers(role);
-  const assignableRoles = getAssignableRolesFor(role);
-  const defaultRole = assignableRoles[0] ?? "employee";
+  const canCreate = isSystemAdmin(role);
 
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
-  const [selectedRole, setSelectedRole] = React.useState<RoleKey>(defaultRole);
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+  const [acknowledge, setAcknowledge] = React.useState(false);
+  const [confirmPhrase, setConfirmPhrase] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
@@ -38,10 +34,13 @@ export default function AdminCreateUser() {
   if (!canCreate) {
     return (
       <div>
-        <PageHeader title="Create User" description="Only System Administrators and HR Managers can create users (accounts below them in the hierarchy)." />
+        <PageHeader
+          title="Create Admin"
+          description="Only System Administrators can create another System Administrator."
+        />
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            You are not authorized to create user accounts.
+            You are not authorized to create System Administrator accounts.
           </CardContent>
         </Card>
       </div>
@@ -53,6 +52,14 @@ export default function AdminCreateUser() {
     setError(null);
     setSuccess(null);
 
+    if (!acknowledge) {
+      setError("You must acknowledge that this grants full system access.");
+      return;
+    }
+    if (confirmPhrase.trim() !== CONFIRM_PHRASE) {
+      setError(`Type exactly "${CONFIRM_PHRASE}" to confirm.`);
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -63,14 +70,13 @@ export default function AdminCreateUser() {
     }
 
     setLoading(true);
-
     try {
       const { data, error: fnError } = await supabase.functions.invoke("admin-create-user", {
         body: {
           email,
           password,
-          name: name || "User",
-          role: selectedRole,
+          name: name || "Administrator",
+          role: "system_admin",
         },
       });
 
@@ -79,14 +85,15 @@ export default function AdminCreateUser() {
         return;
       }
 
-      setSuccess(`User created with id ${data.user?.id ?? ""}`);
+      setSuccess(`System Administrator created. User id: ${data.user?.id ?? ""}. This action is logged in Audit Logs (ADMIN_CREATE_ADMIN).`);
       setEmail("");
       setPassword("");
       setConfirmPassword("");
       setName("");
-      setSelectedRole(defaultRole);
+      setConfirmPhrase("");
+      setAcknowledge(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create user.");
+      setError(err instanceof Error ? err.message : "Failed to create admin.");
     } finally {
       setLoading(false);
     }
@@ -95,13 +102,21 @@ export default function AdminCreateUser() {
   return (
     <div>
       <PageHeader
-        title="Create User"
-        description="Create a new HRMS user account. You can only assign roles below you in the hierarchy."
+        title="Create System Administrator"
+        description="Create another System Administrator account. This is a privileged action and is logged with strong audit (ADMIN_CREATE_ADMIN)."
       />
+
+      <Alert variant="destructive" className="mb-6 max-w-2xl border-amber-500/50 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+        <ShieldAlert className="h-4 w-4" />
+        <AlertTitle>High privilege</AlertTitle>
+        <AlertDescription>
+          The new user will have full system control (manage users, settings, all modules). Only create admins for trusted IT or senior HR personnel. Each creation is recorded in Audit Logs with creator and target details.
+        </AlertDescription>
+      </Alert>
 
       <Card className="max-w-md">
         <CardHeader>
-          <CardTitle className="text-base">New User</CardTitle>
+          <CardTitle className="text-base">New System Administrator</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -113,7 +128,7 @@ export default function AdminCreateUser() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@example.com"
+                placeholder="admin@example.com"
               />
             </div>
 
@@ -123,30 +138,8 @@ export default function AdminCreateUser() {
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="User name"
+                placeholder="Administrator name"
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select
-                value={selectedRole}
-                onValueChange={(v) => setSelectedRole(v as RoleKey)}
-              >
-                <SelectTrigger id="role">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {assignableRoles.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {ROLE_LABELS[r]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                You can only assign roles that are below your role in the hierarchy.
-              </p>
             </div>
 
             <div className="space-y-2">
@@ -197,11 +190,36 @@ export default function AdminCreateUser() {
               </div>
             </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            {success && <p className="text-sm text-emerald-600">{success}</p>}
+            <div className="flex items-start space-x-2">
+              <Checkbox
+                id="acknowledge"
+                checked={acknowledge}
+                onCheckedChange={(v) => setAcknowledge(v === true)}
+              />
+              <label htmlFor="acknowledge" className="text-sm leading-tight cursor-pointer">
+                I understand this grants full system access to the new user. I am authorized to create System Administrators.
+              </label>
+            </div>
 
-            <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create user"}
+            <div className="space-y-2">
+              <Label htmlFor="confirmPhrase">Type to confirm</Label>
+              <Input
+                id="confirmPhrase"
+                value={confirmPhrase}
+                onChange={(e) => setConfirmPhrase(e.target.value)}
+                placeholder={CONFIRM_PHRASE}
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground">
+                Type exactly: <strong>{CONFIRM_PHRASE}</strong>
+              </p>
+            </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            {success && <p className="text-sm text-emerald-600 dark:text-emerald-400">{success}</p>}
+
+            <Button type="submit" disabled={loading} variant="destructive">
+              {loading ? "Creating..." : "Create System Administrator"}
             </Button>
           </form>
         </CardContent>

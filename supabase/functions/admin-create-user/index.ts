@@ -57,10 +57,15 @@ serve(async (req) => {
     });
   }
 
-  // Only allow users with role: "admin" in metadata to create new users.
-  const role = (user.user_metadata?.role as string | undefined) ?? "";
-  if (role !== "admin") {
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
+  // Role hierarchy: only System Administrator and HR Manager can create users;
+  // they may only assign roles below them.
+  const creatorRoleRaw = (user.user_metadata?.role as string | undefined) ?? "";
+  const creatorRole = creatorRoleRaw.trim().toLowerCase();
+  const isSystemAdmin = creatorRole === "admin" || creatorRole === "system_admin" || creatorRole === "super_admin";
+  const isHrManager = creatorRole === "hr" || creatorRole === "hr_manager";
+
+  if (!isSystemAdmin && !isHrManager) {
+    return new Response(JSON.stringify({ error: "Forbidden: only System Administrator or HR Manager can create users" }), {
       status: 403,
       headers: { "Content-Type": "application/json" },
     });
@@ -78,6 +83,25 @@ serve(async (req) => {
   }
 
   const { email, password, name, role: newRole } = body;
+  const assignedRole = (newRole ?? "employee").trim().toLowerCase();
+
+  // HR Manager can only assign: hr_officer, department_manager, employee
+  const hrManagerAllowedRoles = ["hr_officer", "department_manager", "employee"];
+  if (isHrManager && !hrManagerAllowedRoles.includes(assignedRole)) {
+    return new Response(
+      JSON.stringify({ error: "HR Manager can only assign HR Officer, Department Manager, or Employee" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // Valid role keys (system_admin can assign any of these)
+  const validRoles = ["system_admin", "hr_manager", "hr_officer", "payroll_officer", "finance_manager", "department_manager", "employee"];
+  if (!validRoles.includes(assignedRole)) {
+    return new Response(JSON.stringify({ error: "Invalid role" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   const { data, error } = await adminClient.auth.admin.createUser({
     email,
@@ -85,7 +109,7 @@ serve(async (req) => {
     email_confirm: true,
     user_metadata: {
       name: name ?? "User",
-      role: newRole ?? "user",
+      role: assignedRole,
     },
   });
 
@@ -114,7 +138,7 @@ serve(async (req) => {
       entity_id: data.user?.id ?? null,
       ip_address: ip,
       metadata: {
-        role_assigned: newRole ?? "user",
+        role_assigned: assignedRole,
       },
     })
     .catch(() => {

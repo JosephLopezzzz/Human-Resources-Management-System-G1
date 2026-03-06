@@ -1,12 +1,12 @@
 import React from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "./useAuth";
+import { getCanonicalRole, type RoleKey } from "./roles";
 
 type RequireRoleProps = {
-  allowed: string[];
+  /** Allowed canonical role keys (legacy roles are mapped via getCanonicalRole) */
+  allowed: RoleKey[];
 };
-
-const FULL_ACCESS_ROLES = ["admin", "super_admin"];
 
 function getRole(user: { user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> } | null): string {
   if (!user) return "employee";
@@ -16,21 +16,15 @@ function getRole(user: { user_metadata?: Record<string, unknown>; app_metadata?:
   return typeof raw === "string" ? raw.trim() : "employee";
 }
 
-function hasFullAccess(role: string): boolean {
-  const r = role.toLowerCase();
-  return r === "admin" || r === "super_admin" || r === "superadmin";
-}
-
 export function RequireRole({ allowed }: RequireRoleProps) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
   if (loading) return null;
 
-  const role = getRole(user);
-  // admin and super_admin have full access to everything
-  const hasFullAccessRole = hasFullAccess(role);
-  const isAllowed = hasFullAccessRole || allowed.includes(role);
+  const rawRole = getRole(user);
+  const role = getCanonicalRole(rawRole) as RoleKey;
+  const isAllowed = allowed.includes(role);
 
   if (!isAllowed) {
     return (
@@ -44,4 +38,3 @@ export function RequireRole({ allowed }: RequireRoleProps) {
 
   return <Outlet />;
 }
-

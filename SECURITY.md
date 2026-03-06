@@ -3,34 +3,65 @@
 This HRMS uses Supabase as its backend with a layered security model:
 
 - **Authentication**: Supabase Auth (email/password and Google OAuth) with MFA support.
-- **Authorization**: Role-based access control (RBAC) via `user_metadata.role` and a `user_roles` table.
+- **Authorization**: Role-based access control (RBAC) via `user_metadata.role` and a `user_roles` table. Roles follow a hierarchy; only System Administrator and HR Manager can create user accounts, and only for roles below them.
 - **Row-Level Security (RLS)**: Enabled on core tables (`employees`, `departments`, `attendance_logs`, `leave_*`, `payroll_*`, `review_cycles`, `kpi_definitions`, `audit_logs`, `settings`, `user_roles`).
-- **Edge Functions**: Used for privileged actions (admin user creation, login rate limiting).
-- **Frontend guards**: `RequireAuth` and `RequireRole` components restrict access to protected routes.
+- **Edge Functions**: Used for privileged actions (admin user creation with hierarchy checks, login rate limiting).
+- **Frontend guards**: `RequireAuth` and `RequireRole` components restrict access to protected routes; sidebar and actions are filtered by role.
 
 ## Roles and access
 
-The app assumes these logical roles (stored in `auth.users.user_metadata.role` and optionally in `user_roles`):
+Roles are stored in `auth.users.user_metadata.role` (and optionally in `user_roles`). Legacy values (`admin`, `hr`, `payroll`, `manager`) are mapped to the canonical roles below.
 
-- `admin`: Full access to all modules and settings.
-- `hr`: HR management (employees, departments, leave, performance, settings).
-- `manager`: Limited visibility into team-level information (intended for future expansion).
-- `employee`: Regular user; can see and manage own data (attendance, leave, limited performance views).
-- `payroll`: Access to payroll runs and items.
-- `security`: Access to audit logs.
+### 1. System Administrator (`system_admin`)
+
+- **Access**: Full system control.
+- **Responsibilities**: Manage user accounts & permissions, configure system settings, manage system backups, view all modules (HR, payroll, compliance).
+- **Used by**: IT or senior HR tech personnel.
+- **Can create users with roles**: HR Manager, HR Officer, Payroll Officer, Finance Manager, Department Manager, Employee.
+
+### 2. HR Manager (`hr_manager`)
+
+- **Access**: Full HR module access. Cannot modify core system configurations (e.g. Settings).
+- **Responsibilities**: Employee lifecycle (hire, promote, terminate), approve leave & benefits, view reports and analytics, oversee performance reviews, ensure labor law compliance.
+- **Can create users with roles**: HR Officer, Department Manager, Employee.
+
+### 3. HR Officer / HR Staff (`hr_officer`)
+
+- **Access**: Operational HR tasks. Limited access to salary structure editing.
+- **Responsibilities**: Add/edit employee records, process leave applications, maintain documents, update benefits information.
+
+### 4. Payroll Officer (`payroll_officer`)
+
+- **Access**: Payroll module only.
+- **Responsibilities**: Process salaries, compute taxes & deductions, generate payslips, manage bonuses & commissions, handle government contributions.
+- **Note**: In finance companies, strict audit logging should be enabled for this role.
+
+### 5. Finance Manager / CFO (`finance_manager`)
+
+- **Access**: Payroll & financial reports. Cannot edit employee personal data.
+- **Responsibilities**: Approve payroll, view compensation reports, monitor labor costs, budget workforce expenses.
+
+### 6. Department Manager / Branch Manager (`department_manager`)
+
+- **Access**: Team-level access.
+- **Responsibilities**: Approve leave requests, conduct performance evaluations.
+
+### 7. Employee (`employee`)
+
+- **Access**: Own data (attendance, leave, own payslip, limited performance views).
 
 ### Route access (frontend)
 
 - `/` (Dashboard): Any authenticated user.
-- `/employees`: `admin`, `hr`, `manager` (via component-level checks).
-- `/departments`: `admin`, `hr`.
-- `/attendance`: Any authenticated user (but data filtered by RLS).
-- `/leave`: Any authenticated user (but data filtered by RLS).
-- `/payroll`: `admin`, `hr`, `payroll` (wrapped in `RequireRole`).
-- `/performance`: Any authenticated user (visibility governed by RLS).
-- `/audit-logs`: `admin`, `hr`, `security` (wrapped in `RequireRole`).
-- `/settings`: `admin`, `hr` (wrapped in `RequireRole`).
-- `/admin/users/new`: `admin` only.
+- `/employees`: `system_admin`, `hr_manager`, `hr_officer`, `department_manager`, `employee`.
+- `/departments`: `system_admin`, `hr_manager`, `hr_officer`, `department_manager`, `employee`.
+- `/attendance`: Same as employees.
+- `/leave`: Same as employees.
+- `/payroll`: `system_admin`, `hr_manager`, `payroll_officer`, `finance_manager`, `employee`.
+- `/performance`: `system_admin`, `hr_manager`, `hr_officer`, `department_manager`, `employee`.
+- `/audit-logs`: `system_admin`, `hr_manager`.
+- `/settings`: `system_admin` only.
+- `/admin/users/new`: `system_admin`, `hr_manager` (Create User; assignable roles limited by hierarchy).
 
 Backend RLS ensures that bypassing the UI cannot escalate privileges.
 
@@ -40,11 +71,12 @@ Backend RLS ensures that bypassing the UI cannot escalate privileges.
 
 Path: `supabase/functions/admin-create-user/index.ts`
 
-- **Purpose**: Create new Supabase users with roles on behalf of admins.
+- **Purpose**: Create new Supabase users with roles on behalf of System Administrators or HR Managers.
 - **Security controls**:
   - Requires a valid Bearer token; verifies user with `adminClient.auth.getUser(token)`.
-  - Enforces `user_metadata.role === "admin"`.
-  - Enforces MFA (AAL2) via `auth.mfa.getAuthenticatorAssuranceLevel()` on a user-scoped client.
+  - Creator must be `system_admin` (or legacy `admin`) or `hr_manager` (or legacy `hr`).
+  - HR Manager may only assign roles: `hr_officer`, `department_manager`, `employee`. System Administrator may assign any role.
+  - Enforces MFA (AAL2) for this privileged operation.
   - Writes an `ADMIN_CREATE_USER` record to `audit_logs` on success.
 - **Env vars required**:
   - `SUPABASE_URL`
@@ -73,15 +105,15 @@ The `Login` page calls this function via `supabase.functions.invoke("login-with-
 
 ## Tables and RLS (high level)
 
-- `employees`: RLS allows admin/HR full access; other roles get restricted views; frontend hooks use React Query.
-- `departments`: Admin/HR can manage; others read-only.
-- `attendance_logs`: Users see their own records; managers/HR/admin see more as per policies.
-- `leave_requests`, `leave_balances`: Users see their own; admin/HR can approve and see all.
-- `payroll_runs`, `payroll_items`: Only `admin`, `hr`, `payroll` have broad access; employees can see only their own items.
-- `review_cycles`, `kpi_definitions`: Everyone can read; admin/HR manage.
-- `audit_logs`: Only `admin`, `hr`, `security` can read; inserts are performed by backend code (Edge Functions).
-- `settings`: Everyone can read; only `admin`/`hr` can update.
-- `user_roles`: Only `admin`/`hr` can read/write.
+- `employees`: RLS allows system_admin/hr_manager/hr_officer full access; department_manager and employee get restricted views.
+- `departments`: system_admin, hr_manager, hr_officer can manage; others read-only or by RLS.
+- `attendance_logs`: Users see their own; managers/HR see more as per policies.
+- `leave_requests`, `leave_balances`: Users see their own; system_admin, hr_manager, hr_officer, department_manager can approve as per role.
+- `payroll_runs`, `payroll_items`: system_admin, hr_manager, payroll_officer, finance_manager have broad access; employees see only their own items.
+- `review_cycles`, `kpi_definitions`: Everyone can read; system_admin and hr_manager manage.
+- `audit_logs`: Only system_admin and hr_manager can read; inserts are performed by backend code (Edge Functions).
+- `settings`: Read by all; only system_admin can update.
+- `user_roles`: Only system_admin can read/write (or as per your RLS).
 
 ## Operational recommendations
 
@@ -89,9 +121,17 @@ The `Login` page calls this function via `supabase.functions.invoke("login-with-
   - Strong password policy (length and complexity).
   - Session and refresh token lifetimes aligned with your 7‑day session/MFA window, or stricter.
 - Ensure environment variables for Edge Functions are set in the Supabase dashboard.
-- Regularly review `audit_logs` via the `/audit-logs` page (only for `admin`/`hr`/`security` roles).
+- Regularly review `audit_logs` via the `/audit-logs` page (system_admin, hr_manager).
 - When adding new privileged Edge Functions, follow the same pattern:
   - Verify caller token and role.
   - Enforce MFA where appropriate.
   - Write a corresponding audit log entry.
+- To set a user to System Administrator (e.g. initial setup), run in SQL Editor:
 
+```sql
+UPDATE auth.users
+SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || '{"role": "system_admin"}'::jsonb
+WHERE email = 'admin@example.com';
+```
+
+Legacy `admin` and `hr` still work and are mapped to `system_admin` and `hr_manager` in the frontend.
