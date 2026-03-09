@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";  
 import { Plus, Search, Download } from "lucide-react";
 import { useState, useRef } from "react";
 import { useEmployees } from "@/hooks/useEmployees";
+import { useDepartments } from "@/hooks/useDepartments";
 import { useAuth } from "@/auth/useAuth";
 import { getCanonicalRole, canManageEmployees } from "@/auth/roles";
 import { format } from "date-fns";
@@ -25,6 +26,7 @@ const createEmployeeSchema = z.object({
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Enter a valid email"),
   position: z.string().min(1, "Position is required"),
+  department_id: z.string().uuid().nullable().optional(),
   status: z.enum(["regular", "probation", "suspended", "terminated", "resigned"]),
   join_date: z.string().optional(),
   salary_amount: z.string().min(1, "Salary is required"),
@@ -35,6 +37,7 @@ type CreateEmployeeValues = z.infer<typeof createEmployeeSchema>;
 
 const Employees = () => {
   const { employees, isLoading, error, createEmployee, creating } = useEmployees();
+  const { departments } = useDepartments();
   const { user } = useAuth();
   const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
   const canManage = canManageEmployees(role);
@@ -51,6 +54,7 @@ const Employees = () => {
       last_name: "",
       email: "",
       position: "",
+      department_id: null,
       status: "regular",
       join_date: "",
       salary_amount: "",
@@ -59,7 +63,8 @@ const Employees = () => {
   });
 
   async function onSubmit(values: CreateEmployeeValues) {
-    const numericSalary = Number(values.salary_amount.replace(/,/g, ""));
+    const salaryStr = String(values.salary_amount).replace(/,/g, "");
+    const numericSalary = parseFloat(salaryStr);
 
     try {
       await createEmployee({
@@ -68,11 +73,11 @@ const Employees = () => {
         last_name: values.last_name,
         email: values.email,
         position: values.position,
+        department_id: values.department_id || null,
         status: values.status,
         join_date: values.join_date || new Date().toISOString().slice(0, 10),
-        salary_amount: Number.isFinite(numericSalary) ? numericSalary : 0,
+        salary_amount: isNaN(numericSalary) ? 0 : numericSalary,
         salary_currency: values.salary_currency,
-        department_id: null,
       });
 
       toast({
@@ -82,10 +87,11 @@ const Employees = () => {
 
       setOpen(false);
       form.reset();
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Error creating employee:", err);
       toast({
         title: "Failed to create employee",
-        description: err instanceof Error ? err.message : "Something went wrong.",
+        description: err?.message || JSON.stringify(err) || "Something went wrong.",
         variant: "destructive",
       });
     }
@@ -186,6 +192,34 @@ const Employees = () => {
                               <FormLabel>Position</FormLabel>
                               <FormControl>
                                 <Input placeholder="Sr. Developer" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="department_id"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Department</FormLabel>
+                              <FormControl>
+                                <Select
+                                  value={field.value ?? "none"}
+                                  onValueChange={(val) => field.onChange(val === "none" ? null : val)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select department" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">No Department</SelectItem>
+                                    {departments.map((dept) => (
+                                      <SelectItem key={dept.id} value={dept.id}>
+                                        {dept.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
