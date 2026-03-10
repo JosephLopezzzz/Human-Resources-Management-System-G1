@@ -24,14 +24,30 @@ export function useEmployees() {
   const listQuery = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("employees")
-        .select("*")
-        .order("employee_code", { ascending: true });
+      console.log("🔍 useEmployees: Fetching from employees table only...");
+      
+      try {
+        // Simple: Just fetch from employees table since admin users will be inserted there
+        const { data: employeesData, error: employeesError } = await supabase
+          .from("employees")
+          .select("*")
+          .order("employee_code", { ascending: true });
 
-      if (error) throw error;
-      const parsed = z.array(employeeSchema).parse(data ?? []);
-      return parsed;
+        if (employeesError) {
+          console.error("❌ Employees table error:", employeesError);
+          throw employeesError;
+        }
+        
+        console.log("✅ Employees data:", employeesData);
+        const parsedEmployees = z.array(employeeSchema).parse(employeesData ?? []);
+        console.log("✅ Parsed employees:", parsedEmployees.length);
+        
+        return parsedEmployees;
+        
+      } catch (error) {
+        console.error("❌ Error in useEmployees:", error);
+        throw error;
+      }
     },
   });
 

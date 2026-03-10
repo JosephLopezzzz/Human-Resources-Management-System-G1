@@ -305,14 +305,18 @@ serve(async (req) => {
 
     // Insert into employees table for display in Employees module
     const employeeInsertResult = await adminClient
-      .from("employees") // Assuming your employees table is named 'employees'
+      .from("employees")
       .insert({
-        user_id: data.user.id, // Link to the created user's ID
-        full_name: name, // Assuming 'name' is passed in the request body
+        employee_code: 'EMP' + username.slice(-6).toUpperCase(), // Generate employee code from username
+        first_name: name.split(' ')[0] || username, // First part of name or username
+        last_name: name.split(' ').slice(1).join(' ') || 'User', // Rest of name or 'User'
         email: email,
-        position: assignedRole, // Assuming 'role' from the request body can be used as position
-        status: 'regular', // Default status for new employees
+        department_id: null, // Admin users don't have departments initially
+        position: assignedRole, // Use the assigned role as position
+        status: 'regular', // Default status
         join_date: new Date().toISOString().split('T')[0], // Format as YYYY-MM-DD
+        salary_amount: 0, // Default salary
+        salary_currency: 'PHP', // Default currency
       });
     
     if (employeeInsertResult.error) {
@@ -321,13 +325,28 @@ serve(async (req) => {
     }
 
     // Save username to user_login table for login resolution
-    const loginInsertResult = await adminClient
-      .from("user_login")
-      .insert({ email, username_lower: username });
-  
-    if (loginInsertResult.error) {
-      console.error("Failed to save username:", loginInsertResult.error);
-      // Don't fail the user creation, but log the error
+    try {
+      // First try to insert, if it fails due to duplicate, that's fine
+      const loginInsertResult = await adminClient
+        .from("user_login")
+        .insert({ 
+          email, 
+          username_lower: username 
+        });
+      
+      if (loginInsertResult.error) {
+        // Check if it's just a duplicate (which is fine)
+        if (loginInsertResult.error.code === '23505') { // unique_violation
+          console.log(`Username ${username} already exists in user_login - skipping`);
+        } else {
+          console.error("Failed to save username:", loginInsertResult.error);
+          console.error("Details:", JSON.stringify(loginInsertResult.error, null, 2));
+        }
+      } else {
+        console.log(`Successfully saved username: ${username} for email: ${email}`);
+      }
+    } catch (loginError) {
+      console.error("Exception saving username:", loginError);
     }
 
     // Best-effort audit log for the successful admin create user action.
