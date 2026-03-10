@@ -13,6 +13,7 @@ import {
 } from "@/auth/loginRateLimit";
 import { useAuth } from "@/auth/useAuth";
 import { Eye, EyeOff } from "lucide-react";
+import OTPModal from "@/components/OTPModal";
 
 type LocationState = { from?: { pathname?: string } } | null;
 
@@ -30,6 +31,8 @@ export default function Login() {
   const [lockRemainingMs, setLockRemainingMs] = React.useState(0);
   const [forgotPasswordSent, setForgotPasswordSent] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
+  const [showOTPModal, setShowOTPModal] = React.useState(false);
+  const [otpEmail, setOtpEmail] = React.useState("");
 
   React.useEffect(() => {
     if (!user) return;
@@ -137,17 +140,60 @@ export default function Login() {
       }
       email = resolved;
     }
+    
+    // Show OTP modal instead of sending password reset
+    setOtpEmail(email);
+    setShowOTPModal(true);
     setError(null);
     setForgotPasswordSent(false);
+  }
+
+  async function onSendOTP() {
     setSubmitting(true);
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/login`,
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-user/send-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: otpEmail }),
       });
-      if (resetError) throw resetError;
-      setForgotPasswordSent(true);
+
+      if (response.ok) {
+        setError("OTP sent successfully. Please check your email.");
+      } else {
+        setError("Failed to send OTP. Please try again.");
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send reset email.");
+      setError(err instanceof Error ? err.message : "Failed to send OTP.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onVerifyOTP(otp: string) {
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-user/verify-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: otpEmail, otp }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.resetLink) {
+        // Redirect to the password reset link provided by Supabase
+        window.location.href = result.resetLink;
+        setShowOTPModal(false);
+        setError(null);
+      } else {
+        setError(result.error || "Invalid OTP. Please try again.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid OTP. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -290,6 +336,14 @@ export default function Login() {
           </p>
         </CardContent>
       </Card>
+      
+      <OTPModal
+        isOpen={showOTPModal}
+        onClose={() => setShowOTPModal(false)}
+        onVerify={onVerifyOTP}
+        onResend={onSendOTP}
+        email={otpEmail}
+      />
     </div>
   );
 }
