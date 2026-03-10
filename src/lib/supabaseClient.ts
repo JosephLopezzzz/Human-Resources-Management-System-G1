@@ -63,4 +63,3 @@ export async function invokeFunction<TBody, TData>(
   }
   return { data: json as TData, errorMessage: null };
 }
-

@@ -38,7 +38,7 @@ const Departments = () => {
       code: "",
       name: "",
       budget_amount: "",
-      budget_currency: "USD",
+      budget_currency: "PHP",
     },
   });
 
@@ -140,7 +140,7 @@ const Departments = () => {
                           <FormItem>
                             <FormLabel>Currency</FormLabel>
                             <FormControl>
-                              <Input placeholder="USD" {...field} />
+                              <Input placeholder="PHP" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -207,8 +207,8 @@ const Departments = () => {
                     {dept.budget_amount != null
                       ? dept.budget_amount.toLocaleString(undefined, {
                           style: "currency",
-                          currency: dept.budget_currency || "USD",
-                        })
+                          currency: dept.budget_currency || "PHP",
+                        }).replace(/\$/g, "₱")
                       : "—"}
                   </TableCell>
                   <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>

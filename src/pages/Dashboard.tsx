@@ -23,7 +23,7 @@ const Dashboard = () => {
         <StatCard icon={Building2} title="Departments" value={12} change="2 new" changeType="neutral" />
         <StatCard icon={Clock} title="Present Today" value={231} change="93.1% attendance" changeType="positive" />
         <StatCard icon={CalendarDays} title="On Leave" value={14} change="5.6% of workforce" changeType="neutral" />
-        <StatCard icon={DollarSign} title="Payroll (Feb)" value="$1.2M" change="Pending approval" changeType="neutral" />
+        <StatCard icon={DollarSign} title="Payroll (Feb)" value="₱1.2M" change="Pending approval" changeType="neutral" />
         <StatCard icon={TrendingUp} title="Avg Rating" value="4.2" change="+0.3 vs last cycle" changeType="positive" />
       </div>
 

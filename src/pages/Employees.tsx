@@ -54,7 +54,7 @@ const Employees = () => {
       status: "regular",
       join_date: "",
       salary_amount: "",
-      salary_currency: "USD",
+      salary_currency: "PHP",
     },
   });
 
@@ -251,7 +251,7 @@ const Employees = () => {
                             <FormItem>
                               <FormLabel>Currency</FormLabel>
                               <FormControl>
-                                <Input placeholder="USD" {...field} />
+                                <Input placeholder="PHP" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -348,8 +348,8 @@ const Employees = () => {
                   <TableCell className="text-sm text-right font-medium">
                     {emp.salary_amount.toLocaleString(undefined, {
                       style: "currency",
-                      currency: emp.salary_currency || "USD",
-                    })}
+                      currency: emp.salary_currency || "PHP",
+                    }).replace(/\$/g, "₱")}
                   </TableCell>
                 </TableRow>
               ))}

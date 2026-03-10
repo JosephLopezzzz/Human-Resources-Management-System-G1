@@ -94,14 +94,14 @@ const Payroll = () => {
         <StatCard
           icon={DollarSign}
           title="Total Gross"
-          value={totalGross.toLocaleString(undefined, { style: "currency", currency: "USD" })}
+          value={totalGross.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
           change={run ? format(new Date(run.period_start), "MMMM yyyy") : "No run yet"}
           changeType="neutral"
         />
         <StatCard
           icon={DollarSign}
           title="Total Net"
-          value={totalNet.toLocaleString(undefined, { style: "currency", currency: "USD" })}
+          value={totalNet.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
           change="After deductions"
           changeType="neutral"
         />
@@ -218,19 +218,19 @@ const Payroll = () => {
                         </p>
                       </TableCell>
                       <TableCell className="text-sm text-right font-mono">
-                        {pr.base_salary.toLocaleString(undefined, { style: "currency", currency: "USD" })}
+                        {pr.base_salary.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
                       </TableCell>
                       <TableCell className="text-sm text-right font-mono text-success">
-                        {pr.allowances.toLocaleString(undefined, { style: "currency", currency: "USD" })}
+                        {pr.allowances.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
                       </TableCell>
                       <TableCell className="text-sm text-right font-mono text-destructive">
-                        {pr.deductions.toLocaleString(undefined, { style: "currency", currency: "USD" })}
+                        {pr.deductions.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
                       </TableCell>
                       <TableCell className="text-sm text-right font-mono text-destructive">
-                        {pr.tax.toLocaleString(undefined, { style: "currency", currency: "USD" })}
+                        {pr.tax.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
                       </TableCell>
                       <TableCell className="text-sm text-right font-mono font-semibold">
-                        {pr.net_pay.toLocaleString(undefined, { style: "currency", currency: "USD" })}
+                        {pr.net_pay.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={pr.status} />
