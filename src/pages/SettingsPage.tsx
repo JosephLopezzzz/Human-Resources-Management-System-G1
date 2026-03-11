@@ -20,12 +20,12 @@ const SettingsPage = () => {
   const updateSetting = useUpdateSetting();
 
   const general = settings.find((s) => s.key === "system.general")?.value ?? {
-    name: "HRMS Enterprise",
+    name: "BLUEPEAK HR Portal",
     timezone: "UTC+8",
     workHoursPerDay: 8,
   };
   const company = settings.find((s) => s.key === "company.info")?.value ?? {
-    name: "Acme Corporation",
+    name: "BLUEPEAK",
     registrationNumber: "REG-2020-001234",
   };
 

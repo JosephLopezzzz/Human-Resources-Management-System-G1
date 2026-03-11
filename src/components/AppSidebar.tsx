@@ -6,6 +6,7 @@ import {
   Clock,
   CalendarDays,
   DollarSign,
+  WalletCards,
   Target,
   ScrollText,
   Settings,
@@ -20,13 +21,19 @@ import { useState } from "react";
 import { useAuth } from "@/auth/useAuth";
 import { getCanonicalRole, canViewModule, isSystemAdmin, type RoleKey } from "@/auth/roles";
 
-const navItems: { to: string; icon: typeof LayoutDashboard; label: string; module: "dashboard" | "employees" | "departments" | "attendance" | "leave" | "payroll" | "performance" | "audit_logs" }[] = [
+const navItems: {
+  to: string;
+  icon: typeof LayoutDashboard;
+  label: string;
+  module: "dashboard" | "employees" | "departments" | "attendance" | "leave" | "payroll" | "my_pay" | "performance" | "audit_logs";
+}[] = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard", module: "dashboard" },
   { to: "/employees", icon: Users, label: "Employees", module: "employees" },
   { to: "/departments", icon: Building2, label: "Departments", module: "departments" },
   { to: "/attendance", icon: Clock, label: "Attendance", module: "attendance" },
   { to: "/leave", icon: CalendarDays, label: "Leave", module: "leave" },
   { to: "/payroll", icon: DollarSign, label: "Payroll", module: "payroll" },
+  { to: "/my-pay", icon: WalletCards, label: "My Pay", module: "my_pay" },
   { to: "/performance", icon: Target, label: "Performance", module: "performance" },
   { to: "/audit-logs", icon: ScrollText, label: "Audit Logs", module: "audit_logs" },
 ];
@@ -58,7 +65,7 @@ export function AppSidebar() {
       <div className="flex items-center gap-2 px-4 h-14 border-b border-sidebar-border">
         {!collapsed && (
           <span className="text-sidebar-primary font-bold text-lg tracking-tight">
-            HRMS
+            BLUEPEAK
           </span>
         )}
         <button

@@ -24,7 +24,7 @@ export default function Login() {
 
   const from = ((location.state as LocationState)?.from?.pathname as string | undefined) ?? "/";
 
-  const [emailOrUsername, setEmailOrUsername] = React.useState("");
+  const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -45,17 +45,17 @@ export default function Login() {
 
   React.useEffect(() => {
     const id = window.setInterval(() => {
-      setLockRemainingMs(emailOrUsername ? getLockRemainingMs(emailOrUsername) : 0);
+      setLockRemainingMs(username ? getLockRemainingMs(username) : 0);
     }, 500);
     return () => window.clearInterval(id);
-  }, [emailOrUsername]);
+  }, [username]);
 
   async function onPasswordLogin(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setForgotPasswordSent(false);
 
-    const locked = emailOrUsername ? getLockRemainingMs(emailOrUsername) : 0;
+    const locked = username ? getLockRemainingMs(username) : 0;
     if (locked > 0) {
       setLockRemainingMs(locked);
       setError("Too many failed attempts. Please wait before trying again.");
@@ -65,45 +65,47 @@ export default function Login() {
 
     setSubmitting(true);
     try {
-      const login = emailOrUsername.trim();
-      let email = login;
-      if (!login.includes("@")) {
-        const { data: resolved, error: rpcError } = await supabase.rpc("get_email_for_login", {
-          login,
-        });
-        if (rpcError) {
-          setError("Could not look up account. Use your email if you don't have a username.");
-          setSubmitting(false);
-          return;
-        }
-        if (!resolved) {
-          setError("Invalid email or username. If you only sign in with Google, use “Continue with Google” above.");
-          registerLoginFailure(login);
-          setLockRemainingMs(getLockRemainingMs(login));
-          setPassword("");
-          setEmailOrUsername("");
-          setSubmitting(false);
-          return;
-        }
-        email = resolved;
+      const login = username.trim();
+      if (!login) {
+        setError("Enter your username.");
+        setSubmitting(false);
+        return;
       }
+
+      const { data: resolved, error: rpcError } = await supabase.rpc("get_email_for_login", {
+        login,
+      });
+      if (rpcError) {
+        setError("Could not look up account. Please contact your administrator.");
+        setSubmitting(false);
+        return;
+      }
+      if (!resolved) {
+        setError("Invalid username or password.");
+        registerLoginFailure(login);
+        setLockRemainingMs(getLockRemainingMs(login));
+        setPassword("");
+        setUsername("");
+        setSubmitting(false);
+        return;
+      }
+
+      const email = resolved as string;
 
       const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
       if (signInError) {
-        registerLoginFailure(emailOrUsername);
-        setLockRemainingMs(getLockRemainingMs(emailOrUsername));
+        registerLoginFailure(username);
+        setLockRemainingMs(getLockRemainingMs(username));
         setPassword("");
-        setEmailOrUsername("");
+        setUsername("");
         const msg = signInError.message;
         if (
           msg.toLowerCase().includes("invalid") ||
           msg.toLowerCase().includes("credentials") ||
           msg.toLowerCase().includes("email")
         ) {
-          setError(
-            "Invalid email or password. If you only sign in with Google, use “Continue with Google” above. Otherwise use Forgot password to set a password."
-          );
+          setError("Invalid username or password.");
         } else {
           setError(msg);
         }
@@ -114,10 +116,10 @@ export default function Login() {
       setLockRemainingMs(0);
       // AuthProvider will redirect (including to /mfa if due).
     } catch (err) {
-      registerLoginFailure(emailOrUsername);
-      setLockRemainingMs(emailOrUsername ? getLockRemainingMs(emailOrUsername) : 0);
+      registerLoginFailure(username);
+      setLockRemainingMs(username ? getLockRemainingMs(username) : 0);
       setPassword("");
-      setEmailOrUsername("");
+      setUsername("");
       setError(err instanceof Error ? err.message : "Login failed.");
     } finally {
       window.setTimeout(() => setSubmitting(false), 500);
@@ -126,20 +128,17 @@ export default function Login() {
 
   async function onForgotPassword(e: React.MouseEvent) {
     e.preventDefault();
-    const login = emailOrUsername.trim();
+    const login = username.trim();
     if (!login) {
-      setError("Enter your email or username above, then click Forgot password.");
+      setError("Enter your username above, then click Forgot password.");
       return;
     }
-    let email = login;
-    if (!login.includes("@")) {
-      const { data: resolved, error: rpcError } = await supabase.rpc("get_email_for_login", { login });
-      if (rpcError || !resolved) {
-        setError("Enter your email above for password reset (username lookup not available for reset).");
-        return;
-      }
-      email = resolved;
+    const { data: resolved, error: rpcError } = await supabase.rpc("get_email_for_login", { login });
+    if (rpcError || !resolved) {
+      setError("Could not look up account for that username. Please contact your administrator.");
+      return;
     }
+    const email = resolved as string;
     
     // Show OTP modal instead of sending password reset
     setOtpEmail(email);
@@ -199,66 +198,27 @@ export default function Login() {
     }
   }
 
-  async function onGoogleLogin() {
-    setError(null);
-    setSubmitting(true);
-    try {
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: window.location.origin },
-      });
-      if (oauthError) setError(oauthError.message);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Google login failed.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   const locked = lockRemainingMs > 0;
-  const disabled = submitting || !emailOrUsername || !password || locked;
+  const disabled = submitting || !username || !password || locked;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
-          <CardDescription>Access your HRMS dashboard.</CardDescription>
+          <CardDescription>Access your HR dashboard with your username and password.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={onGoogleLogin}
-            disabled={submitting}
-          >
-            Continue with Google
-          </Button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or</span>
-            </div>
-          </div>
-
-          <p className="text-xs text-muted-foreground text-center">
-            Use <strong>Continue with Google</strong> if you signed up with Google. Use email + password only if you created the account with email or set a password via Forgot password.
-          </p>
-
           <form onSubmit={onPasswordLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="emailOrUsername">Email / Username</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="emailOrUsername"
+                id="username"
                 type="text"
                 autoComplete="username"
-                value={emailOrUsername}
-                onChange={(e) => setEmailOrUsername(e.target.value)}
-                placeholder="admin1 or you@company.com"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="e.g. admin1"
                 disabled={submitting}
               />
             </div>
@@ -305,9 +265,9 @@ export default function Login() {
               </p>
             )}
 
-            {!locked && emailOrUsername && getFailureCount(emailOrUsername) > 0 && getFailureCount(emailOrUsername) < 5 && (
+            {!locked && username && getFailureCount(username) > 0 && getFailureCount(username) < 5 && (
               <p className="text-sm text-amber-600 dark:text-amber-400">
-                {5 - getFailureCount(emailOrUsername)} attempt(s) remaining before lockout.
+                {5 - getFailureCount(username)} attempt(s) remaining before lockout.
               </p>
             )}
 
@@ -332,7 +292,7 @@ export default function Login() {
           </form>
 
           <p className="text-center text-xs text-muted-foreground">
-            Signed up with Google only? Use <strong>Continue with Google</strong>. Email/password is for accounts created with email.
+            User accounts are created by an administrator. Use the username they provided to you.
           </p>
         </CardContent>
       </Card>

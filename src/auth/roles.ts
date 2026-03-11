@@ -10,6 +10,7 @@ export const ROLE_KEYS = [
   "payroll_officer",
   "finance_manager",
   "department_manager",
+  "compliance_officer",
   "employee",
 ] as const;
 
@@ -35,6 +36,8 @@ export const ROLE_RANK: Record<RoleKey, number> = {
   payroll_officer: 60,
   hr_officer: 50,
   department_manager: 40,
+   // Compliance officer is a senior specialist role focused on audit/compliance
+  compliance_officer: 35,
   employee: 10,
 };
 
@@ -46,17 +49,29 @@ export const ROLE_LABELS: Record<RoleKey, string> = {
   payroll_officer: "Payroll Officer",
   finance_manager: "Finance Manager / CFO",
   department_manager: "Department / Branch Manager",
+  compliance_officer: "Compliance Officer",
   employee: "Employee",
 };
 
-/** Roles that can create user accounts, and which roles they may assign (must be strictly below in rank). */
+/** Roles that can create user accounts, and which roles they may assign (must be strictly below in rank). 
+ *  For BLUEPEAK, only the System Administrator may create accounts.
+ */
 export const CREATOR_ASSIGNABLE_ROLES: Record<RoleKey, RoleKey[]> = {
-  system_admin: ["hr_manager", "hr_officer", "payroll_officer", "finance_manager", "department_manager", "employee"],
-  hr_manager: ["hr_officer", "department_manager", "employee"],
+  system_admin: [
+    "hr_manager",
+    "hr_officer",
+    "payroll_officer",
+    "finance_manager",
+    "department_manager",
+    "compliance_officer",
+    "employee",
+  ],
+  hr_manager: [],
   hr_officer: [],
   payroll_officer: [],
   finance_manager: [],
   department_manager: [],
+  compliance_officer: [],
   employee: [],
 };
 
@@ -97,6 +112,7 @@ export type ModuleId =
   | "attendance"
   | "leave"
   | "payroll"
+  | "my_pay"
   | "performance"
   | "audit_logs"
   | "settings"
@@ -104,16 +120,26 @@ export type ModuleId =
 
 /** Which roles can view each module (view = see in nav + open route) */
 const MODULE_VIEW: Record<ModuleId, RoleKey[]> = {
-  dashboard: ["system_admin", "hr_manager", "hr_officer", "payroll_officer", "finance_manager", "department_manager", "employee"],
-  employees: ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
-  departments: ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
+  dashboard: [
+    "system_admin",
+    "hr_manager",
+    "hr_officer",
+    "payroll_officer",
+    "finance_manager",
+    "department_manager",
+    "compliance_officer",
+    "employee",
+  ],
+  employees: ["system_admin", "hr_manager", "hr_officer", "department_manager"],
+  departments: ["system_admin", "hr_manager", "hr_officer", "department_manager"],
   attendance: ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
   leave: ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
-  payroll: ["system_admin", "hr_manager", "payroll_officer", "finance_manager", "employee"],
-  performance: ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
-  audit_logs: ["system_admin", "hr_manager"],
+  payroll: ["system_admin", "hr_manager", "payroll_officer", "finance_manager"],
+  my_pay: ROLE_KEYS,
+  performance: ["system_admin", "hr_manager", "hr_officer", "department_manager"],
+  audit_logs: ["system_admin", "hr_manager", "compliance_officer"],
   settings: ["system_admin"],
-  create_user: ["system_admin", "hr_manager"],
+  create_user: ["system_admin"],
 };
 
 /** Can the role view this module (sidebar + route access) */
@@ -168,7 +194,7 @@ export function canEditSettings(role: RoleKey): boolean {
 
 /** Can view audit logs */
 export function canViewAuditLogs(role: RoleKey): boolean {
-  return ["system_admin", "hr_manager"].includes(role);
+  return ["system_admin", "hr_manager", "compliance_officer"].includes(role);
 }
 
 /** Can edit salary structure (limited for hr_officer per spec) */
@@ -184,14 +210,14 @@ export function canEditEmployeePersonalData(role: RoleKey): boolean {
 /** Role sets for RequireRole allowed lists (route guards) */
 export const ROUTE_ROLES: Record<string, RoleKey[]> = {
   "/": ROLE_KEYS,
-  "/employees": ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
-  "/departments": ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
+  "/employees": ["system_admin", "hr_manager", "hr_officer", "department_manager"],
+  "/departments": ["system_admin", "hr_manager", "hr_officer", "department_manager"],
   "/attendance": ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
   "/leave": ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
-  "/payroll": ["system_admin", "hr_manager", "payroll_officer", "finance_manager", "employee"],
-  "/performance": ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
-  "/audit-logs": ["system_admin", "hr_manager"],
+  "/payroll": ["system_admin", "hr_manager", "payroll_officer", "finance_manager"],
+  "/performance": ["system_admin", "hr_manager", "hr_officer", "department_manager"],
+  "/audit-logs": ["system_admin", "hr_manager", "compliance_officer"],
   "/settings": ["system_admin"],
-  "/admin/users/new": ["system_admin", "hr_manager"],
+  "/admin/users/new": ["system_admin"],
   "/admin/create-admin": ["system_admin"],
 };

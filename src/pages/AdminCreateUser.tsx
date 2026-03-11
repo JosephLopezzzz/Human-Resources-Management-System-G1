@@ -74,13 +74,14 @@ export default function AdminCreateUser() {
         return;
       }
       const { data, errorMessage } = await invokeFunction<
-        { email: string; password: string; name: string; role: string },
+        { email: string; password: string; name: string; role: string; username?: string },
         { user?: { id?: string } }
       >("admin-create-user", token, {
         email,
         password,
         name: name || "User",
         role: selectedRole,
+        username: username || undefined,
       });
 
       if (errorMessage) {
@@ -148,7 +149,7 @@ export default function AdminCreateUser() {
                 autoComplete="off"
               />
               <p className="text-xs text-muted-foreground">
-                Optional. They can sign in with this instead of email. If empty, derived from name.
+                This will be the unique username they use to sign in. If left blank, it is derived from their name.
               </p>
             </div>
 

@@ -63,16 +63,14 @@ serve(async (req) => {
     );
   }
 
-  // Role hierarchy: only System Administrator and HR Manager can create users;
-  // they may only assign roles below them.
+  // Role hierarchy: only System Administrator can create users.
   const creatorRoleRaw = (user.user_metadata?.role as string | undefined) ?? "";
   const creatorRole = creatorRoleRaw.trim().toLowerCase();
   const isSystemAdmin = creatorRole === "admin" || creatorRole === "system_admin" || creatorRole === "super_admin";
-  const isHrManager = creatorRole === "hr" || creatorRole === "hr_manager";
 
-  if (!isSystemAdmin && !isHrManager) {
+  if (!isSystemAdmin) {
     return jsonResponse(
-      JSON.stringify({ error: "Forbidden: only System Administrator or HR Manager can create users" }),
+      JSON.stringify({ error: "Forbidden: only System Administrator can create users" }),
       403,
       req
     );
@@ -90,16 +88,16 @@ serve(async (req) => {
   const assignedRole = (newRole ?? "employee").trim().toLowerCase();
   const username = (rawUsername ?? name ?? "user").trim().toLowerCase().replace(/\s+/g, "_") || "user";
 
-  // HR Manager can only assign: hr_officer, department_manager, employee
-  const hrManagerAllowedRoles = ["hr_officer", "department_manager", "employee"];
-  if (isHrManager && !hrManagerAllowedRoles.includes(assignedRole)) {
-    return new Response(
-      JSON.stringify({ error: "HR Manager can only assign HR Officer, Department Manager, or Employee" }),
-      { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
-    );
-  }
-
-  const validRoles = ["system_admin", "hr_manager", "hr_officer", "payroll_officer", "finance_manager", "department_manager", "employee"];
+  const validRoles = [
+    "system_admin",
+    "hr_manager",
+    "hr_officer",
+    "payroll_officer",
+    "finance_manager",
+    "department_manager",
+    "compliance_officer",
+    "employee",
+  ];
   if (!validRoles.includes(assignedRole)) {
     return jsonResponse(JSON.stringify({ error: "Invalid role" }), 400, req);
   }
