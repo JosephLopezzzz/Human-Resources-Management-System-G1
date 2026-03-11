@@ -137,12 +137,13 @@ export default function AdminCreateUser() {
         description="Create a new HRMS user account. You can only assign roles below you in the hierarchy."
       />
 
-      <Card className="max-w-md">
-        <CardHeader>
-          <CardTitle className="text-base">New User</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-base">New User</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -291,12 +292,13 @@ export default function AdminCreateUser() {
             {error && <p className="text-sm text-destructive">{error}</p>}
             {success && <p className="text-sm text-emerald-600">{success}</p>}
 
-            <Button type="submit" disabled={loading || !allPasswordChecksPass || !acceptedPolicies}>
-              {loading ? "Creating..." : "Create user"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <Button type="submit" disabled={loading || !allPasswordChecksPass || !acceptedPolicies}>
+                {loading ? "Creating..." : "Create user"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

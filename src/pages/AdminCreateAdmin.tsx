@@ -151,12 +151,13 @@ export default function AdminCreateAdmin() {
         </AlertDescription>
       </Alert>
 
-      <Card className="max-w-md">
-        <CardHeader>
-          <CardTitle className="text-base">New System Administrator</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-base">New System Administrator</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -310,16 +311,17 @@ export default function AdminCreateAdmin() {
             {error && <p className="text-sm text-destructive">{error}</p>}
             {success && <p className="text-sm text-emerald-600 dark:text-emerald-400">{success}</p>}
 
-            <Button
-              type="submit"
-              disabled={loading || !acknowledge || !acceptedPolicies || !allPasswordChecksPass}
-              variant="destructive"
-            >
-              {loading ? "Creating..." : "Create System Administrator"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <Button
+                type="submit"
+                disabled={loading || !acknowledge || !acceptedPolicies || !allPasswordChecksPass}
+                variant="destructive"
+              >
+                {loading ? "Creating..." : "Create System Administrator"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
