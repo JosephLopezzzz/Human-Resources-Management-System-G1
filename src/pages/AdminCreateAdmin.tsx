@@ -27,10 +27,29 @@ export default function AdminCreateAdmin() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [acknowledge, setAcknowledge] = React.useState(false);
+  const [acceptedPolicies, setAcceptedPolicies] = React.useState(false);
   const [confirmPhrase, setConfirmPhrase] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
+
+  const passwordChecks = React.useMemo(() => {
+    const value = password ?? "";
+    return {
+      length: value.length >= 12,
+      upper: /[A-Z]/.test(value),
+      lower: /[a-z]/.test(value),
+      number: /\d/.test(value),
+      special: /[^A-Za-z0-9]/.test(value),
+    };
+  }, [password]);
+
+  const allPasswordChecksPass =
+    passwordChecks.length &&
+    passwordChecks.upper &&
+    passwordChecks.lower &&
+    passwordChecks.number &&
+    passwordChecks.special;
 
   if (!canCreate) {
     return (
@@ -57,16 +76,22 @@ export default function AdminCreateAdmin() {
       setError("You must acknowledge that this grants full system access.");
       return;
     }
+    if (!acceptedPolicies) {
+      setError("You must agree to the Terms and Conditions and Privacy Policy.");
+      return;
+    }
     if (confirmPhrase.trim() !== CONFIRM_PHRASE) {
       setError(`Type exactly "${CONFIRM_PHRASE}" to confirm.`);
       return;
     }
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+    if (!allPasswordChecksPass) {
+      setError(
+        "Password must be at least 12 characters and include uppercase, lowercase, number, and special character."
+      );
       return;
     }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
 
@@ -103,6 +128,7 @@ export default function AdminCreateAdmin() {
       setUsername("");
       setConfirmPhrase("");
       setAcknowledge(false);
+      setAcceptedPolicies(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create admin.");
     } finally {
@@ -190,6 +216,25 @@ export default function AdminCreateAdmin() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+
+              <div className="mt-2 space-y-1 text-xs">
+                <p className="font-medium text-muted-foreground">For admins, use a very strong password:</p>
+                <p className={passwordChecks.length ? "text-emerald-600" : "text-destructive"}>
+                  {passwordChecks.length ? "✓" : "✗"} At least 12 characters
+                </p>
+                <p className={passwordChecks.upper ? "text-emerald-600" : "text-destructive"}>
+                  {passwordChecks.upper ? "✓" : "✗"} Uppercase letter
+                </p>
+                <p className={passwordChecks.lower ? "text-emerald-600" : "text-destructive"}>
+                  {passwordChecks.lower ? "✓" : "✗"} Lowercase letter
+                </p>
+                <p className={passwordChecks.number ? "text-emerald-600" : "text-destructive"}>
+                  {passwordChecks.number ? "✓" : "✗"} Number
+                </p>
+                <p className={passwordChecks.special ? "text-emerald-600" : "text-destructive"}>
+                  {passwordChecks.special ? "✓" : "✗"} Special character
+                </p>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -216,15 +261,36 @@ export default function AdminCreateAdmin() {
               </div>
             </div>
 
-            <div className="flex items-start space-x-2">
-              <Checkbox
-                id="acknowledge"
-                checked={acknowledge}
-                onCheckedChange={(v) => setAcknowledge(v === true)}
-              />
-              <label htmlFor="acknowledge" className="text-sm leading-tight cursor-pointer">
-                I understand this grants full system access to the new user. I am authorized to create System Administrators.
-              </label>
+            <div className="space-y-2">
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="acknowledge"
+                  checked={acknowledge}
+                  onCheckedChange={(v) => setAcknowledge(v === true)}
+                />
+                <label htmlFor="acknowledge" className="text-sm leading-tight cursor-pointer">
+                  I understand this grants full system access to the new user. I am authorized to create System
+                  Administrators.
+                </label>
+              </div>
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="policies-admin"
+                  checked={acceptedPolicies}
+                  onCheckedChange={(v) => setAcceptedPolicies(v === true)}
+                />
+                <label htmlFor="policies-admin" className="text-sm leading-tight cursor-pointer">
+                  I agree to the{" "}
+                  <a href="/terms" target="_blank" rel="noreferrer" className="underline">
+                    Terms and Conditions
+                  </a>{" "}
+                  and{" "}
+                  <a href="/privacy" target="_blank" rel="noreferrer" className="underline">
+                    Privacy Policy
+                  </a>
+                  .
+                </label>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -244,7 +310,11 @@ export default function AdminCreateAdmin() {
             {error && <p className="text-sm text-destructive">{error}</p>}
             {success && <p className="text-sm text-emerald-600 dark:text-emerald-400">{success}</p>}
 
-            <Button type="submit" disabled={loading} variant="destructive">
+            <Button
+              type="submit"
+              disabled={loading || !acknowledge || !acceptedPolicies || !allPasswordChecksPass}
+              variant="destructive"
+            >
               {loading ? "Creating..." : "Create System Administrator"}
             </Button>
           </form>

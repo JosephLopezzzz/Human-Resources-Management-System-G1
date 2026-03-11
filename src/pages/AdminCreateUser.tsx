@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   getCanonicalRole,
   canCreateUsers,
@@ -32,9 +33,28 @@ export default function AdminCreateUser() {
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+  const [acceptedPolicies, setAcceptedPolicies] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
+
+  const passwordChecks = React.useMemo(() => {
+    const value = password ?? "";
+    return {
+      length: value.length >= 8,
+      upper: /[A-Z]/.test(value),
+      lower: /[a-z]/.test(value),
+      number: /\d/.test(value),
+      special: /[^A-Za-z0-9]/.test(value),
+    };
+  }, [password]);
+
+  const allPasswordChecksPass =
+    passwordChecks.length &&
+    passwordChecks.upper &&
+    passwordChecks.lower &&
+    passwordChecks.number &&
+    passwordChecks.special;
 
   if (!canCreate) {
     return (
@@ -54,12 +74,18 @@ export default function AdminCreateUser() {
     setError(null);
     setSuccess(null);
 
+    if (!allPasswordChecksPass) {
+      setError(
+        "Password must be at least 8 characters and include uppercase, lowercase, number, and special character."
+      );
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
     }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (!acceptedPolicies) {
+      setError("You must agree to the Terms and Conditions and Privacy Policy.");
       return;
     }
 
@@ -93,6 +119,7 @@ export default function AdminCreateUser() {
       setEmail("");
       setPassword("");
       setConfirmPassword("");
+      setAcceptedPolicies(false);
       setName("");
       setUsername("");
       setSelectedRole(defaultRole);
@@ -197,6 +224,25 @@ export default function AdminCreateUser() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+
+              <div className="mt-2 space-y-1 text-xs">
+                <p className="font-medium text-muted-foreground">Password must include:</p>
+                <p className={passwordChecks.length ? "text-emerald-600" : "text-destructive"}>
+                  {passwordChecks.length ? "✓" : "✗"} At least 8 characters
+                </p>
+                <p className={passwordChecks.upper ? "text-emerald-600" : "text-destructive"}>
+                  {passwordChecks.upper ? "✓" : "✗"} Uppercase letter
+                </p>
+                <p className={passwordChecks.lower ? "text-emerald-600" : "text-destructive"}>
+                  {passwordChecks.lower ? "✓" : "✗"} Lowercase letter
+                </p>
+                <p className={passwordChecks.number ? "text-emerald-600" : "text-destructive"}>
+                  {passwordChecks.number ? "✓" : "✗"} Number
+                </p>
+                <p className={passwordChecks.special ? "text-emerald-600" : "text-destructive"}>
+                  {passwordChecks.special ? "✓" : "✗"} Special character
+                </p>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -223,10 +269,29 @@ export default function AdminCreateUser() {
               </div>
             </div>
 
+            <div className="flex items-start space-x-2">
+              <Checkbox
+                id="policies"
+                checked={acceptedPolicies}
+                onCheckedChange={(v) => setAcceptedPolicies(v === true)}
+              />
+              <label htmlFor="policies" className="text-sm leading-tight cursor-pointer">
+                I agree to the{" "}
+                <a href="/terms" target="_blank" rel="noreferrer" className="underline">
+                  Terms and Conditions
+                </a>{" "}
+                and{" "}
+                <a href="/privacy" target="_blank" rel="noreferrer" className="underline">
+                  Privacy Policy
+                </a>
+                .
+              </label>
+            </div>
+
             {error && <p className="text-sm text-destructive">{error}</p>}
             {success && <p className="text-sm text-emerald-600">{success}</p>}
 
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !allPasswordChecksPass || !acceptedPolicies}>
               {loading ? "Creating..." : "Create user"}
             </Button>
           </form>
