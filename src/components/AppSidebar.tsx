@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useAuth } from "@/auth/useAuth";
 import { getCanonicalRole, canViewModule, isSystemAdmin, type RoleKey } from "@/auth/roles";
+import { motion, AnimatePresence } from "framer-motion";
 
 const navItems: {
   to: string;
@@ -56,10 +57,13 @@ export function AppSidebar() {
   }
 
   return (
-    <aside
+    <motion.aside
+      initial={false}
+      animate={{ width: collapsed ? 64 : 240 }}
+      transition={{ duration: 0.22, ease: "easeOut" }}
       className={cn(
-        "flex flex-col h-screen bg-sidebar border-r border-sidebar-border transition-all duration-200",
-        collapsed ? "w-16" : "w-60"
+        "flex flex-col h-screen bg-sidebar border-r border-sidebar-border overflow-hidden",
+        "shadow-sm"
       )}
     >
       <div className="flex items-center gap-2 px-4 h-14 border-b border-sidebar-border">
@@ -79,27 +83,46 @@ export function AppSidebar() {
       </div>
 
       <nav className="flex-1 py-2 space-y-0.5 px-2 overflow-y-auto">
-        {visibleNavItems.map((item) => {
+        <AnimatePresence initial={false}>
+          {visibleNavItems.map((item) => {
           const isActive =
             item.to === "/"
               ? location.pathname === "/"
               : location.pathname.startsWith(item.to);
           return (
-            <NavLink
+            <motion.div
               key={item.to}
-              to={item.to}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-primary"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
             >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </NavLink>
+              <NavLink
+                to={item.to}
+                className={cn(
+                  "relative flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  "hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
+                  isActive
+                    ? "text-sidebar-primary"
+                    : "text-sidebar-foreground"
+                )}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebar-active-indicator"
+                    className="absolute inset-0 rounded-md bg-sidebar-accent"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-3">
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  {!collapsed && <span>{item.label}</span>}
+                </span>
+              </NavLink>
+            </motion.div>
           );
         })}
+        </AnimatePresence>
       </nav>
 
       <div className="px-2 py-3 border-t border-sidebar-border">
@@ -145,6 +168,6 @@ export function AppSidebar() {
           {!collapsed && <span>Logout</span>}
         </button>
       </div>
-    </aside>
+    </motion.aside>
   );
 }

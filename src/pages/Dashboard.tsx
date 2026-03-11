@@ -4,6 +4,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Users, Building2, Clock, CalendarDays, DollarSign, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageTransition, AnimatedList } from "@/components/motion";
+import { motion } from "framer-motion";
 
 const recentActivity = [
   { id: 1, action: "Employee Onboarded", entity: "John Smith", actor: "HR Admin", time: "2 min ago", type: "approved" as const },
@@ -15,20 +17,32 @@ const recentActivity = [
 
 const Dashboard = () => {
   return (
-    <div>
+    <PageTransition>
       <PageHeader
         title="Dashboard"
         description="Overview of your BLUEPEAK HR operations and workforce insights."
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
-        <StatCard icon={Users} title="Total Employees" value={248} change="+12 this month" changeType="positive" />
-        <StatCard icon={Building2} title="Departments" value={12} change="2 new" changeType="neutral" />
-        <StatCard icon={Clock} title="Present Today" value={231} change="93.1% attendance" changeType="positive" />
-        <StatCard icon={CalendarDays} title="On Leave" value={14} change="5.6% of workforce" changeType="neutral" />
-        <StatCard icon={DollarSign} title="Payroll (Feb)" value="₱1.2M" change="Pending approval" changeType="neutral" />
-        <StatCard icon={TrendingUp} title="Avg Rating" value="4.2" change="+0.3 vs last cycle" changeType="positive" />
-      </div>
+      <AnimatedList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+        <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+          <StatCard icon={Users} title="Total Employees" value={248} change="+12 this month" changeType="positive" />
+        </motion.div>
+        <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+          <StatCard icon={Building2} title="Departments" value={12} change="2 new" changeType="neutral" />
+        </motion.div>
+        <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+          <StatCard icon={Clock} title="Present Today" value={231} change="93.1% attendance" changeType="positive" />
+        </motion.div>
+        <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+          <StatCard icon={CalendarDays} title="On Leave" value={14} change="5.6% of workforce" changeType="neutral" />
+        </motion.div>
+        <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+          <StatCard icon={DollarSign} title="Payroll (Feb)" value="₱1.2M" change="Pending approval" changeType="neutral" />
+        </motion.div>
+        <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+          <StatCard icon={TrendingUp} title="Avg Rating" value="4.2" change="+0.3 vs last cycle" changeType="positive" />
+        </motion.div>
+      </AnimatedList>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -48,13 +62,19 @@ const Dashboard = () => {
               </TableHeader>
               <TableBody>
                 {recentActivity.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium text-sm">{item.action}</TableCell>
-                    <TableCell className="text-sm">{item.entity}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{item.actor}</TableCell>
-                    <TableCell><StatusBadge status={item.type} /></TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{item.time}</TableCell>
-                  </TableRow>
+                  <motion.tr
+                    key={item.id}
+                    className="group"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.22, ease: "easeOut" }}
+                  >
+                    <TableCell className="font-medium text-sm group-hover:bg-muted/30">{item.action}</TableCell>
+                    <TableCell className="text-sm group-hover:bg-muted/30">{item.entity}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground group-hover:bg-muted/30">{item.actor}</TableCell>
+                    <TableCell className="group-hover:bg-muted/30"><StatusBadge status={item.type} /></TableCell>
+                    <TableCell className="text-sm text-muted-foreground group-hover:bg-muted/30">{item.time}</TableCell>
+                  </motion.tr>
                 ))}
               </TableBody>
             </Table>
@@ -93,7 +113,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageTransition>
   );
 };
 
