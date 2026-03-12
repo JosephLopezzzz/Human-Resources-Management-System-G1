@@ -24,6 +24,7 @@ import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Mfa from "./pages/Mfa";
+import ResetPassword from "./pages/ResetPassword";
 import AdminCreateUser from "./pages/AdminCreateUser";
 import AdminCreateAdmin from "./pages/AdminCreateAdmin";
 
@@ -40,6 +41,7 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/mfa" element={<Mfa />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             <Route element={<RequireAuth />}>
               <Route element={<AppLayout />}>
@@ -57,6 +59,7 @@ const App = () => (
                 <Route element={<RequireRole allowed={ROUTE_ROLES["/payroll"]} />}>
                   <Route path="/payroll" element={<ErrorBoundary><Payroll /></ErrorBoundary>} />
                 </Route>
+                <Route path="/my-pay" element={<MyPay />} />
                 <Route path="/performance" element={<Performance />} />
                 <Route element={<RequireRole allowed={ROUTE_ROLES["/audit-logs"]} />}>
                   <Route path="/audit-logs" element={<ErrorBoundary><AuditLogs /></ErrorBoundary>} />

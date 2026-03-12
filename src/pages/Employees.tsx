@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";  
 import { Plus, Search, Download } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useDepartments } from "@/hooks/useDepartments";
 import { useAuth } from "@/auth/useAuth";
@@ -45,6 +45,12 @@ const Employees = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [open, setOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 20;
+
+  useEffect(() => {
+    setPage(0);
+  }, [search, statusFilter]);
 
   const form = useForm<CreateEmployeeValues>({
     resolver: zodResolver(createEmployeeSchema),
@@ -101,10 +107,37 @@ const Employees = () => {
     const fullName = `${e.first_name} ${e.last_name}`;
     const matchesSearch =
       fullName.toLowerCase().includes(search.toLowerCase()) ||
-      e.employee_code.toLowerCase().includes(search.toLowerCase());
+      e.employee_code.toLowerCase().includes(search.toLowerCase()) ||
+      (e.email ?? "").toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || e.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const paginated = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+
+  function handleExport() {
+    const headers = ["Employee ID", "First Name", "Last Name", "Email", "Department", "Position", "Status", "Join Date", "Salary"];
+    const rows = filtered.map((e) => [
+      e.employee_code,
+      e.first_name,
+      e.last_name,
+      e.email,
+      (e as { department_name?: string | null }).department_name ?? "",
+      e.position,
+      e.status,
+      e.join_date ?? "",
+      e.salary_amount,
+    ]);
+    const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `employees-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div>
@@ -113,7 +146,7 @@ const Employees = () => {
         description="Manage employee records and lifecycle"
         actions={
           <>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="h-4 w-4 mr-1" />
               Export
             </Button>
@@ -357,7 +390,7 @@ const Employees = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((emp) => (
+              {paginated.map((emp) => (
                 <TableRow key={emp.id} className="cursor-pointer hover:bg-muted/50">
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -373,7 +406,7 @@ const Employees = () => {
                     </div>
                   </TableCell>
                   <TableCell className="text-sm font-mono text-muted-foreground">{emp.employee_code}</TableCell>
-                  <TableCell className="text-sm">—</TableCell>
+                  <TableCell className="text-sm">{emp.department_name ?? "—"}</TableCell>
                   <TableCell className="text-sm">{emp.position}</TableCell>
                   <TableCell><StatusBadge status={emp.status} /></TableCell>
                   <TableCell className="text-sm text-muted-foreground">
@@ -391,10 +424,16 @@ const Employees = () => {
           </Table>
 
           <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-            <span>Showing {filtered.length} of {employees.length} employees</span>
+            <span>
+              Showing {paginated.length === 0 ? 0 : page * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE + PAGE_SIZE, filtered.length)} of {filtered.length} employees
+            </span>
             <div className="flex gap-1">
-              <Button variant="outline" size="sm" disabled>Previous</Button>
-              <Button variant="outline" size="sm" disabled>Next</Button>
+              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>
+                Previous
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1 || filtered.length === 0}>
+                Next
+              </Button>
             </div>
           </div>
         </CardContent>

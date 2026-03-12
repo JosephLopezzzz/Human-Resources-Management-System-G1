@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, ChevronRight } from "lucide-react";
 import { useDepartments } from "@/hooks/useDepartments";
+import { useEmployees } from "@/hooks/useEmployees";
 import { useAuth } from "@/auth/useAuth";
 import { getCanonicalRole, canManageDepartments } from "@/auth/roles";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -26,6 +27,14 @@ type CreateDepartmentValues = z.infer<typeof createDepartmentSchema>;
 
 const Departments = () => {
   const { departments, isLoading, error, createDepartment, creating } = useDepartments();
+  const { employees } = useEmployees();
+  const empCountByDept = employees.reduce(
+    (acc, e) => {
+      if (e.department_id) acc[e.department_id] = (acc[e.department_id] ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
   const { user } = useAuth();
   const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
   const canManage = canManageDepartments(role);
@@ -200,9 +209,15 @@ const Departments = () => {
                       <p className="text-xs text-muted-foreground font-mono">{dept.code}</p>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">—</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">—</TableCell>
-                  <TableCell className="text-sm text-center">—</TableCell>
+                  <TableCell className="text-sm">
+                    {dept.manager_user_id ? "—" : "—"}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {(dept as { parent_name?: string | null }).parent_name ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-sm text-center">
+                    {empCountByDept[dept.id] ?? 0}
+                  </TableCell>
                   <TableCell className="text-sm text-right font-medium">
                     {dept.budget_amount != null
                       ? dept.budget_amount.toLocaleString(undefined, {

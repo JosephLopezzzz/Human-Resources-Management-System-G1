@@ -17,6 +17,7 @@ const employeeSchema = z.object({
 });
 
 export type Employee = z.infer<typeof employeeSchema>;
+export type EmployeeWithDept = Employee & { department_name: string | null };
 
 export function useEmployees() {
   const queryClient = useQueryClient();
@@ -24,30 +25,19 @@ export function useEmployees() {
   const listQuery = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      console.log("🔍 useEmployees: Fetching from employees table only...");
-      
-      try {
-        // Simple: Just fetch from employees table since admin users will be inserted there
-        const { data: employeesData, error: employeesError } = await supabase
-          .from("employees")
-          .select("*")
-          .order("employee_code", { ascending: true });
+      const { data: employeesData, error: employeesError } = await supabase
+        .from("employees")
+        .select("*, departments(name)")
+        .order("employee_code", { ascending: true });
 
-        if (employeesError) {
-          console.error("❌ Employees table error:", employeesError);
-          throw employeesError;
-        }
-        
-        console.log("✅ Employees data:", employeesData);
-        const parsedEmployees = z.array(employeeSchema).parse(employeesData ?? []);
-        console.log("✅ Parsed employees:", parsedEmployees.length);
-        
-        return parsedEmployees;
-        
-      } catch (error) {
-        console.error("❌ Error in useEmployees:", error);
-        throw error;
-      }
+      if (employeesError) throw employeesError;
+
+      const raw = (employeesData ?? []) as Array<{ departments?: { name: string } | null } & Record<string, unknown>>;
+      const parsed = z.array(employeeSchema).parse(raw);
+      return parsed.map((e, i) => ({
+        ...e,
+        department_name: raw[i]?.departments?.name ?? null,
+      }));
     },
   });
 
@@ -70,7 +60,7 @@ export function useEmployees() {
 
   return {
     ...listQuery,
-    employees: listQuery.data ?? [],
+    employees: (listQuery.data ?? []) as EmployeeWithDept[],
     createEmployee: createMutation.mutateAsync,
     creating: createMutation.isPending,
   };

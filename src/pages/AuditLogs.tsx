@@ -22,12 +22,32 @@ const AuditLogs = () => {
 
   const { data: logs = [], isLoading, error } = useAuditLogs(search, category);
 
+  function handleExport() {
+    const headers = ["Timestamp", "Actor", "Action", "Category", "Entity Type", "Entity ID"];
+    const rows = logs.map((log) => [
+      new Date(log.timestamp).toISOString(),
+      log.actor_email ?? "system",
+      log.action,
+      log.category,
+      log.entity_type,
+      log.entity_id ?? "",
+    ]);
+    const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div>
       <PageHeader
         title="Audit Logs"
         description="System-wide activity tracking and compliance audit trail"
-        actions={<Button variant="outline" size="sm"><Download className="h-4 w-4 mr-1" />Export</Button>}
+        actions={<Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4 mr-1" />Export</Button>}
       />
 
       <Card>

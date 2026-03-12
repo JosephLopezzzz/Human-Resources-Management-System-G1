@@ -39,6 +39,21 @@ function getCurrentPeriod() {
   };
 }
 
+/** Fetch all payroll runs (for History tab). */
+export function usePayrollRuns() {
+  return useQuery({
+    queryKey: ["payroll_runs", "all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payroll_runs")
+        .select("*")
+        .order("period_start", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as PayrollRun[];
+    },
+  });
+}
+
 /** Fetch items for a specific run (e.g. History tab detail). */
 export function usePayrollItemsForRun(runId: string | null) {
   return useQuery({

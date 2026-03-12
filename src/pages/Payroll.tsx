@@ -6,15 +6,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatCard } from "@/components/StatCard";
 import { DollarSign, Lock, FileText, AlertTriangle, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { usePayroll, usePayrollItemsForRun } from "@/hooks/usePayroll";
+import { usePayroll, usePayrollRuns, usePayrollItemsForRun } from "@/hooks/usePayroll";
 import { useAuth } from "@/auth/useAuth";
 import { getCanonicalRole, canManagePayroll, canApprovePayrollOrViewReports } from "@/auth/roles";
 import { format } from "date-fns";
+import { useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 
 const Payroll = () => {
   const { run, runLoading, runError, refetchRun, items, itemsLoading, itemsError, generateRun, generating, lockRun, locking } =
     usePayroll();
+  const { data: allRuns = [] } = usePayrollRuns();
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const { data: historyItems = [] } = usePayrollItemsForRun(selectedRunId);
   const { user } = useAuth();
   const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
   const canManage = canManagePayroll(role) || canApprovePayrollOrViewReports(role);
@@ -124,7 +129,7 @@ const Payroll = () => {
       <Tabs defaultValue="breakdown">
         <TabsList className="mb-4">
           <TabsTrigger value="breakdown">Salary Breakdown</TabsTrigger>
-          <TabsTrigger value="history" disabled>
+          <TabsTrigger value="history">
             History
           </TabsTrigger>
         </TabsList>
@@ -245,8 +250,54 @@ const Payroll = () => {
 
         <TabsContent value="history">
           <Card>
-            <CardContent className="pt-6 text-center text-muted-foreground text-sm py-12">
-              Payroll history will be available once connected to a history query.
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Past Payroll Runs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4">
+                <Select value={selectedRunId ?? ""} onValueChange={(v) => setSelectedRunId(v || null)}>
+                  <SelectTrigger className="w-72">
+                    <SelectValue placeholder="Select a run to view details" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allRuns.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.code} — {format(new Date(r.period_start), "MMM d")} to {format(new Date(r.period_end), "MMM d, yyyy")} ({r.status})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {!selectedRunId ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">Select a payroll run to view details.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead className="text-right">Base Salary</TableHead>
+                      <TableHead className="text-right">Net Pay</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {historyItems.map((pr) => (
+                      <TableRow key={pr.id}>
+                        <TableCell>
+                          <p className="text-sm font-medium">{pr.user_email}</p>
+                        </TableCell>
+                        <TableCell className="text-sm text-right font-mono">
+                          {pr.base_salary.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
+                        </TableCell>
+                        <TableCell className="text-sm text-right font-mono font-semibold">
+                          {pr.net_pay.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
+                        </TableCell>
+                        <TableCell><StatusBadge status={pr.status} /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -13,6 +13,7 @@ const departmentSchema = z.object({
 });
 
 export type Department = z.infer<typeof departmentSchema>;
+export type DepartmentWithParent = Department & { parent_name: string | null };
 
 export function useDepartments() {
   const queryClient = useQueryClient();
@@ -26,7 +27,12 @@ export function useDepartments() {
         .order("code", { ascending: true });
 
       if (error) throw error;
-      return z.array(departmentSchema).parse(data ?? []);
+      const parsed = z.array(departmentSchema).parse(data ?? []);
+      const byId = new Map(parsed.map((d) => [d.id, d]));
+      return parsed.map((d) => ({
+        ...d,
+        parent_name: d.parent_id ? byId.get(d.parent_id)?.name ?? null : null,
+      }));
     },
   });
 
@@ -50,7 +56,7 @@ export function useDepartments() {
 
   return {
     ...listQuery,
-    departments: listQuery.data ?? [],
+    departments: (listQuery.data ?? []) as DepartmentWithParent[],
     createDepartment: createMutation.mutateAsync,
     creating: createMutation.isPending,
   };

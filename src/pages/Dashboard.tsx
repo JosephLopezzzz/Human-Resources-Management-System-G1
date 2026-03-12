@@ -6,16 +6,46 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageTransition, AnimatedList } from "@/components/motion";
 import { motion } from "framer-motion";
+import { useEmployees } from "@/hooks/useEmployees";
+import { useDepartments } from "@/hooks/useDepartments";
+import { useTodayAttendance } from "@/hooks/useAttendance";
+import { useLeaveRequests } from "@/hooks/useLeave";
+import { useAuditLogs } from "@/hooks/useAuditLogs";
+import { usePayroll } from "@/hooks/usePayroll";
+import { formatDistanceToNow } from "date-fns";
 
-const recentActivity = [
-  { id: 1, action: "Employee Onboarded", entity: "John Smith", actor: "HR Admin", time: "2 min ago", type: "approved" as const },
-  { id: 2, action: "Leave Approved", entity: "Sarah Connor", actor: "Manager", time: "15 min ago", type: "approved" as const },
-  { id: 3, action: "Payroll Generated", entity: "February 2026", actor: "System", time: "1 hr ago", type: "pending" as const },
-  { id: 4, action: "Clock In Late", entity: "Mike Johnson", actor: "System", time: "2 hr ago", type: "rejected" as const },
-  { id: 5, action: "KPI Review Submitted", entity: "Emily Davis", actor: "Manager", time: "3 hr ago", type: "pending" as const },
-];
+function mapLogToActivity(log: { id: string; action: string; entity_type: string; entity_id: string | null; actor_email: string | null; timestamp: string }) {
+  const type = log.action.includes("CREATE") || log.action.includes("APPROVED") ? "approved" as const
+    : log.action.includes("REJECT") || log.action.includes("FAIL") ? "rejected" as const
+    : "pending" as const;
+  return {
+    id: log.id,
+    action: log.action.replace(/_/g, " "),
+    entity: log.entity_type + (log.entity_id ? ` #${String(log.entity_id).slice(0, 8)}` : ""),
+    actor: log.actor_email ?? "system",
+    time: formatDistanceToNow(new Date(log.timestamp), { addSuffix: true }),
+    type,
+  };
+}
 
 const Dashboard = () => {
+  const { employees } = useEmployees();
+  const { departments } = useDepartments();
+  const { logs: attendanceLogs } = useTodayAttendance();
+  const { data: leaveRequests = [] } = useLeaveRequests();
+  const { data: auditLogs = [] } = useAuditLogs("", "all");
+  const { run: payrollRun, items: payrollItems } = usePayroll();
+
+  const presentCount = attendanceLogs.filter((l) => l.clock_in_at).length;
+  const onLeaveCount = leaveRequests.filter(
+    (r) => r.status === "approved" && new Date(r.end_date) >= new Date() && new Date(r.start_date) <= new Date()
+  ).length;
+  const pendingLeaveCount = leaveRequests.filter((r) => r.status === "pending").length;
+  const probationCount = employees.filter((e) => e.status === "probation").length;
+  const totalNetPay = (payrollItems ?? []).reduce((s, i) => s + i.net_pay, 0);
+  const attendancePct = employees.length > 0 ? ((presentCount / employees.length) * 100).toFixed(1) : "0";
+  const recentActivity = auditLogs.slice(0, 5).map(mapLogToActivity);
+
   return (
     <PageTransition>
       <PageHeader
@@ -25,22 +55,28 @@ const Dashboard = () => {
 
       <AnimatedList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-          <StatCard icon={Users} title="Total Employees" value={248} change="+12 this month" changeType="positive" />
+          <StatCard icon={Users} title="Total Employees" value={employees.length} change={`${departments.length} departments`} changeType="neutral" />
         </motion.div>
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-          <StatCard icon={Building2} title="Departments" value={12} change="2 new" changeType="neutral" />
+          <StatCard icon={Building2} title="Departments" value={departments.length} change={`${employees.length} employees`} changeType="neutral" />
         </motion.div>
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-          <StatCard icon={Clock} title="Present Today" value={231} change="93.1% attendance" changeType="positive" />
+          <StatCard icon={Clock} title="Present Today" value={presentCount} change={`${attendancePct}% attendance`} changeType="positive" />
         </motion.div>
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-          <StatCard icon={CalendarDays} title="On Leave" value={14} change="5.6% of workforce" changeType="neutral" />
+          <StatCard icon={CalendarDays} title="On Leave" value={onLeaveCount} change={`${pendingLeaveCount} pending`} changeType="neutral" />
         </motion.div>
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-          <StatCard icon={DollarSign} title="Payroll (Feb)" value="₱1.2M" change="Pending approval" changeType="neutral" />
+          <StatCard
+            icon={DollarSign}
+            title="Payroll"
+            value={totalNetPay > 0 ? `₱${(totalNetPay / 1e6).toFixed(2)}M` : "—"}
+            change={payrollRun?.status === "locked" ? "Locked" : "Current period"}
+            changeType="neutral"
+          />
         </motion.div>
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-          <StatCard icon={TrendingUp} title="Avg Rating" value="4.2" change="+0.3 vs last cycle" changeType="positive" />
+          <StatCard icon={TrendingUp} title="Probation" value={probationCount} change="employees on probation" changeType="neutral" />
         </motion.div>
       </AnimatedList>
 
@@ -88,27 +124,27 @@ const Dashboard = () => {
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center py-2 border-b border-border">
               <span className="text-sm text-muted-foreground">Pending Leave Requests</span>
-              <span className="font-semibold">7</span>
+              <span className="font-semibold">{pendingLeaveCount}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border">
               <span className="text-sm text-muted-foreground">Probation Employees</span>
-              <span className="font-semibold">18</span>
+              <span className="font-semibold">{probationCount}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border">
-              <span className="text-sm text-muted-foreground">Upcoming Reviews</span>
-              <span className="font-semibold">23</span>
+              <span className="text-sm text-muted-foreground">Present Today</span>
+              <span className="font-semibold">{presentCount}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border">
-              <span className="text-sm text-muted-foreground">Open Positions</span>
-              <span className="font-semibold">5</span>
+              <span className="text-sm text-muted-foreground">Departments</span>
+              <span className="font-semibold">{departments.length}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border">
-              <span className="text-sm text-muted-foreground">Overtime Hours (Feb)</span>
-              <span className="font-semibold">342 hrs</span>
+              <span className="text-sm text-muted-foreground">Payroll Items (Current)</span>
+              <span className="font-semibold">{payrollItems?.length ?? 0}</span>
             </div>
             <div className="flex justify-between items-center py-2">
-              <span className="text-sm text-muted-foreground">Failed Login Attempts</span>
-              <span className="font-semibold text-destructive">12</span>
+              <span className="text-sm text-muted-foreground">Recent Audit Logs</span>
+              <span className="font-semibold">{auditLogs.length}</span>
             </div>
           </CardContent>
         </Card>

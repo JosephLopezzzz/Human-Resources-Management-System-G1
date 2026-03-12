@@ -215,6 +215,7 @@ export const ROUTE_ROLES: Record<string, RoleKey[]> = {
   "/attendance": ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
   "/leave": ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
   "/payroll": ["system_admin", "hr_manager", "payroll_officer", "finance_manager"],
+  "/my-pay": ROLE_KEYS,
   "/performance": ["system_admin", "hr_manager", "hr_officer", "department_manager"],
   "/audit-logs": ["system_admin", "hr_manager", "compliance_officer"],
   "/settings": ["system_admin"],
