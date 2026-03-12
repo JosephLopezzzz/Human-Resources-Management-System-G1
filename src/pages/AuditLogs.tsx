@@ -90,26 +90,37 @@ const AuditLogs = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {logs.map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell className="text-sm font-mono text-muted-foreground whitespace-nowrap">
-                    {new Date(log.timestamp).toISOString().replace("T", " ").slice(0, 19)}
+              {logs.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    className="py-6 text-center text-sm text-muted-foreground"
+                  >
+                    No records yet.
                   </TableCell>
-                  <TableCell className="text-sm">{log.actor_email ?? "system"}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-mono font-medium">{log.action}</span>
-                      <Badge
-                        variant="outline"
-                        className={categoryColors[log.category] ?? ""}
-                      >
-                        {log.category}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm">{log.entity_type}</TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                logs.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell className="text-sm font-mono text-muted-foreground whitespace-nowrap">
+                      {new Date(log.timestamp).toISOString().replace("T", " ").slice(0, 19)}
+                    </TableCell>
+                    <TableCell className="text-sm">{log.actor_email ?? "system"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-mono font-medium">{log.action}</span>
+                        <Badge
+                          variant="outline"
+                          className={categoryColors[log.category] ?? ""}
+                        >
+                          {log.category}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">{log.entity_type}</TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
 

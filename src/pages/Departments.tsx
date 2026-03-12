@@ -201,34 +201,49 @@ const Departments = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {departments.map((dept) => (
-                <TableRow key={dept.id} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell>
-                    <div>
-                      <p className="text-sm font-medium">{dept.name}</p>
-                      <p className="text-xs text-muted-foreground font-mono">{dept.code}</p>
-                    </div>
+              {departments.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="py-6 text-center text-sm text-muted-foreground"
+                  >
+                    No departments yet.
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {dept.manager_user_id ? "—" : "—"}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {(dept as { parent_name?: string | null }).parent_name ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-sm text-center">
-                    {empCountByDept[dept.id] ?? 0}
-                  </TableCell>
-                  <TableCell className="text-sm text-right font-medium">
-                    {dept.budget_amount != null
-                      ? dept.budget_amount.toLocaleString(undefined, {
-                          style: "currency",
-                          currency: dept.budget_currency || "PHP",
-                        }).replace(/\$/g, "₱")
-                      : "—"}
-                  </TableCell>
-                  <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                departments.map((dept) => (
+                  <TableRow key={dept.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableCell>
+                      <div>
+                        <p className="text-sm font-medium">{dept.name}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{dept.code}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {dept.manager_user_id ? "—" : "—"}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {(dept as { parent_name?: string | null }).parent_name ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-sm text-center">
+                      {empCountByDept[dept.id] ?? 0}
+                    </TableCell>
+                    <TableCell className="text-sm text-right font-medium">
+                      {dept.budget_amount != null
+                        ? dept.budget_amount
+                            .toLocaleString(undefined, {
+                              style: "currency",
+                              currency: dept.budget_currency || "PHP",
+                            })
+                            .replace(/\$/g, "₱")
+                        : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

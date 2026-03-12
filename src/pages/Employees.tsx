@@ -390,36 +390,60 @@ const Employees = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginated.map((emp) => (
-                <TableRow key={emp.id} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-7 w-7">
-                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                          {`${emp.first_name} ${emp.last_name}`.split(" ").map((n) => n[0]).join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-medium">{emp.first_name} {emp.last_name}</p>
-                        <p className="text-xs text-muted-foreground">{emp.email}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm font-mono text-muted-foreground">{emp.employee_code}</TableCell>
-                  <TableCell className="text-sm">{emp.department_name ?? "—"}</TableCell>
-                  <TableCell className="text-sm">{emp.position}</TableCell>
-                  <TableCell><StatusBadge status={emp.status} /></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {emp.join_date ? format(new Date(emp.join_date), "yyyy-MM-dd") : "—"}
-                  </TableCell>
-                  <TableCell className="text-sm text-right font-medium">
-                    {emp.salary_amount.toLocaleString(undefined, {
-                      style: "currency",
-                      currency: emp.salary_currency || "PHP",
-                    }).replace(/\$/g, "₱")}
+              {paginated.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="py-6 text-center text-sm text-muted-foreground"
+                  >
+                    No employees found.
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                paginated.map((emp) => (
+                  <TableRow key={emp.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-7 w-7">
+                          <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                            {`${emp.first_name} ${emp.last_name}`
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium">
+                            {emp.first_name} {emp.last_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{emp.email}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm font-mono text-muted-foreground">
+                      {emp.employee_code}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {emp.department_name ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-sm">{emp.position}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={emp.status} />
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {emp.join_date ? format(new Date(emp.join_date), "yyyy-MM-dd") : "—"}
+                    </TableCell>
+                    <TableCell className="text-sm text-right font-medium">
+                      {emp.salary_amount
+                        .toLocaleString(undefined, {
+                          style: "currency",
+                          currency: emp.salary_currency || "PHP",
+                        })
+                        .replace(/\$/g, "₱")}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
 

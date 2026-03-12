@@ -214,34 +214,55 @@ const Payroll = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.map((pr) => (
-                    <TableRow key={pr.id}>
-                      <TableCell>
-                        <p className="text-sm font-medium">{pr.user_email}</p>
-                        <p className="text-xs text-muted-foreground font-mono">
-                          {pr.user_id.slice(0, 8)}
-                        </p>
-                      </TableCell>
-                      <TableCell className="text-sm text-right font-mono">
-                        {pr.base_salary.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
-                      </TableCell>
-                      <TableCell className="text-sm text-right font-mono text-success">
-                        {pr.allowances.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
-                      </TableCell>
-                      <TableCell className="text-sm text-right font-mono text-destructive">
-                        {pr.deductions.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
-                      </TableCell>
-                      <TableCell className="text-sm text-right font-mono text-destructive">
-                        {pr.tax.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
-                      </TableCell>
-                      <TableCell className="text-sm text-right font-mono font-semibold">
-                        {pr.net_pay.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={pr.status} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
+              {items.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="py-6 text-center text-sm text-muted-foreground"
+                  >
+                    No payroll items for this run.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                items.map((pr) => (
+                  <TableRow key={pr.id}>
+                    <TableCell>
+                      <p className="text-sm font-medium">{pr.user_email}</p>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {pr.user_id.slice(0, 8)}
+                      </p>
+                    </TableCell>
+                    <TableCell className="text-sm text-right font-mono">
+                      {pr.base_salary
+                        .toLocaleString(undefined, { style: "currency", currency: "PHP" })
+                        .replace(/\$/g, "₱")}
+                    </TableCell>
+                    <TableCell className="text-sm text-right font-mono text-success">
+                      {pr.allowances
+                        .toLocaleString(undefined, { style: "currency", currency: "PHP" })
+                        .replace(/\$/g, "₱")}
+                    </TableCell>
+                    <TableCell className="text-sm text-right font-mono text-destructive">
+                      {pr.deductions
+                        .toLocaleString(undefined, { style: "currency", currency: "PHP" })
+                        .replace(/\$/g, "₱")}
+                    </TableCell>
+                    <TableCell className="text-sm text-right font-mono text-destructive">
+                      {pr.tax
+                        .toLocaleString(undefined, { style: "currency", currency: "PHP" })
+                        .replace(/\$/g, "₱")}
+                    </TableCell>
+                    <TableCell className="text-sm text-right font-mono font-semibold">
+                      {pr.net_pay
+                        .toLocaleString(undefined, { style: "currency", currency: "PHP" })
+                        .replace(/\$/g, "₱")}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={pr.status} />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -270,6 +291,19 @@ const Payroll = () => {
               </div>
               {!selectedRunId ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">Select a payroll run to view details.</p>
+              ) : historyItems.length === 0 ? (
+                <Table>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell
+                        colSpan={4}
+                        className="py-6 text-center text-sm text-muted-foreground"
+                      >
+                        No payroll items for this run.
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
               ) : (
                 <Table>
                   <TableHeader>
