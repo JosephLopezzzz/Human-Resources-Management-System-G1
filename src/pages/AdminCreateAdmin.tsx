@@ -36,7 +36,7 @@ export default function AdminCreateAdmin() {
   const passwordChecks = React.useMemo(() => {
     const value = password ?? "";
     return {
-      length: value.length >= 12,
+      length: value.length >= 8,
       upper: /[A-Z]/.test(value),
       lower: /[a-z]/.test(value),
       number: /\d/.test(value),
@@ -86,7 +86,7 @@ export default function AdminCreateAdmin() {
     }
     if (!allPasswordChecksPass) {
       setError(
-        "Password must be at least 12 characters and include uppercase, lowercase, number, and special character."
+        "Password must be at least 8 characters and include uppercase, lowercase, number, and special character."
       );
       return;
     }
@@ -221,7 +221,7 @@ export default function AdminCreateAdmin() {
               <div className="mt-2 space-y-1 text-xs">
                 <p className="font-medium text-muted-foreground">For admins, use a very strong password:</p>
                 <p className={passwordChecks.length ? "text-emerald-600" : "text-destructive"}>
-                  {passwordChecks.length ? "✓" : "✗"} At least 12 characters
+                  {passwordChecks.length ? "✓" : "✗"} At least 8 characters
                 </p>
                 <p className={passwordChecks.upper ? "text-emerald-600" : "text-destructive"}>
                   {passwordChecks.upper ? "✓" : "✗"} Uppercase letter

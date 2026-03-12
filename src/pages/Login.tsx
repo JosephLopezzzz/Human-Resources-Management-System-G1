@@ -114,7 +114,8 @@ export default function Login() {
         return;
       }
 
-      resetLoginFailures(emailOrUsername);
+      // Successful login: reset anti brute-force counter for this user.
+      resetLoginFailures(login);
       setLockRemainingMs(0);
       // AuthProvider will redirect (including to /mfa if due).
     } catch (err) {

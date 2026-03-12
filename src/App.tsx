@@ -9,6 +9,7 @@ import { AuthProvider } from "@/auth/AuthProvider";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { RequireRole } from "@/auth/RequireRole";
 import { ROUTE_ROLES } from "@/auth/roles";
+import { InactivityLogout } from "@/auth/InactivityLogout";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import Departments from "./pages/Departments";
@@ -35,6 +36,7 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <BrowserRouter>
+          <InactivityLogout />
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/mfa" element={<Mfa />} />
