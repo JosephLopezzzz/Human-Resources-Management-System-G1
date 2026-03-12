@@ -114,6 +114,69 @@ function normalizePath(pathname: string) {
   return pathname;
 }
 
+/** Build employee record for Employees module display. */
+function buildEmployeeRow(
+  email: string,
+  name: string,
+  username: string,
+  assignedRole: string,
+  userId?: string
+) {
+  const nameParts = (name ?? username ?? "User").trim().split(/\s+/);
+  const first = nameParts[0] || username || "User";
+  const last = nameParts.slice(1).join(" ") || "User";
+  const empCode = userId
+    ? `EMP-${userId.slice(-8).toUpperCase()}`
+    : `EMP-${username.slice(-8).padStart(8, "0").toUpperCase()}`;
+  const joinDate = new Date().toISOString().slice(0, 10);
+
+  return {
+    email,
+    employee_code: empCode,
+    first_name: first,
+    last_name: last,
+    department_id: null,
+    position: assignedRole.replace(/_/g, " "),
+    status: "regular" as const,
+    join_date: joinDate,
+    salary_amount: 0,
+    salary_currency: "PHP",
+  };
+}
+
+async function syncEmployeeToModule(
+  email: string,
+  name: string,
+  username: string,
+  assignedRole: string,
+  userId?: string
+) {
+  const row = buildEmployeeRow(email, name, username, assignedRole, userId);
+  try {
+    const { data: existing } = await adminClient
+      .from("employees")
+      .select("id")
+      .eq("email", email)
+      .limit(1)
+      .maybeSingle();
+
+    if (existing?.id) {
+      await adminClient
+        .from("employees")
+        .update({
+          first_name: row.first_name,
+          last_name: row.last_name,
+          position: row.position,
+        })
+        .eq("id", existing.id);
+    } else {
+      await adminClient.from("employees").insert(row);
+    }
+  } catch (e) {
+    console.warn("Employee sync failed (table may not exist or schema differs):", e);
+  }
+}
+
 async function findUserIdByEmail(email: string): Promise<string | null> {
   const target = email.trim().toLowerCase();
   if (!target) return null;
@@ -354,6 +417,14 @@ serve(async (req) => {
           /* Username mapping failures should not break the main flow. */
         }
 
+        await syncEmployeeToModule(
+          email,
+          name ?? "User",
+          username,
+          assignedRole,
+          updated.user?.id ?? existingId
+        );
+
         try {
           await adminClient.from("audit_logs").insert({
             actor_user_id: user.id,
@@ -386,6 +457,14 @@ serve(async (req) => {
     } catch {
       // Duplicate username or table missing: log but don't fail user creation
     }
+
+    await syncEmployeeToModule(
+      email,
+      name ?? "User",
+      username,
+      assignedRole,
+      data.user?.id
+    );
 
     const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("cf-connecting-ip") ?? req.headers.get("x-real-ip") ?? null;
 
