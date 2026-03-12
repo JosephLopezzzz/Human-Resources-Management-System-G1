@@ -10,14 +10,13 @@ import {
   Target,
   ScrollText,
   Settings,
-  ChevronLeft,
   LogOut,
   UserPlus,
   ShieldCheck,
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "@/auth/useAuth";
 import { getCanonicalRole, canViewModule, isSystemAdmin, type RoleKey } from "@/auth/roles";
 import { motion, AnimatePresence } from "framer-motion";
@@ -39,8 +38,11 @@ const navItems: {
   { to: "/audit-logs", icon: ScrollText, label: "Audit Logs", module: "audit_logs" },
 ];
 
+const SIDEBAR_COLLAPSED = 72;
+const SIDEBAR_EXPANDED = 240;
+
 export function AppSidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -56,33 +58,47 @@ export function AppSidebar() {
     navigate("/login", { replace: true });
   }
 
+  const handleMouseEnter = useCallback(() => setExpanded(true), []);
+  const handleMouseLeave = useCallback(() => setExpanded(false), []);
+
   return (
     <motion.aside
       initial={false}
-      animate={{ width: collapsed ? 64 : 240 }}
+      animate={{ width: expanded ? SIDEBAR_EXPANDED : SIDEBAR_COLLAPSED }}
       transition={{ duration: 0.22, ease: "easeOut" }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={cn(
-        "flex flex-col h-screen bg-sidebar border-r border-sidebar-border overflow-hidden",
+        "flex flex-col h-screen bg-sidebar border-r border-sidebar-border overflow-hidden shrink-0 z-20",
         "shadow-sm"
       )}
     >
-      <div className="flex items-center gap-2 px-4 h-14 border-b border-sidebar-border">
-        {!collapsed && (
-          <span className="text-sidebar-primary font-bold text-lg tracking-tight">
-            BLUEPEAK
-          </span>
-        )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="ml-auto p-1 rounded hover:bg-sidebar-accent text-sidebar-muted"
-        >
-          <ChevronLeft
-            className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")}
+      <div className="flex items-center gap-3 px-3 h-16 border-b border-sidebar-border shrink-0">
+        <div className="h-10 w-10 rounded-xl bg-sidebar-accent border border-sidebar-border flex items-center justify-center overflow-hidden shrink-0">
+          <img
+            src="/favicon1/bluepeak-favicon.jpg"
+            alt="BLUEPEAK"
+            className="h-full w-full object-contain"
           />
-        </button>
+        </div>
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "auto" }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.18 }}
+              className="overflow-hidden"
+            >
+              <span className="text-sidebar-primary font-bold text-lg tracking-tight whitespace-nowrap">
+                BLUEPEAK
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      <nav className="flex-1 py-2 space-y-0.5 px-2 overflow-y-auto">
+      <nav className="flex-1 py-2 space-y-0.5 px-2 overflow-y-auto overflow-x-hidden">
         <AnimatePresence initial={false}>
           {visibleNavItems.map((item) => {
           const isActive =
@@ -96,12 +112,15 @@ export function AppSidebar() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
+              layout
             >
               <NavLink
                 to={item.to}
+                title={!expanded ? item.label : undefined}
                 className={cn(
-                  "relative flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  "relative flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ease-out",
                   "hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
+                  !expanded && "justify-center px-0",
                   isActive
                     ? "text-sidebar-primary"
                     : "text-sidebar-foreground"
@@ -116,7 +135,7 @@ export function AppSidebar() {
                 )}
                 <span className="relative z-10 flex items-center gap-3">
                   <item.icon className="h-4 w-4 shrink-0" />
-                  {!collapsed && <span>{item.label}</span>}
+                  {expanded && <span>{item.label}</span>}
                 </span>
               </NavLink>
             </motion.div>
@@ -125,47 +144,67 @@ export function AppSidebar() {
         </AnimatePresence>
       </nav>
 
-      <div className="px-2 py-3 border-t border-sidebar-border">
+      <div className="px-2 py-3 border-t border-sidebar-border space-y-0.5">
         {canAccessCreateUser && (
           <NavLink
             to="/admin/users/new"
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent"
+            title={!expanded ? "Create User" : undefined}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent",
+              !expanded && "justify-center px-0"
+            )}
           >
             <UserPlus className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Create User</span>}
+            {expanded && <span>Create User</span>}
           </NavLink>
         )}
         {canAccessCreateAdmin && (
           <NavLink
             to="/admin/create-admin"
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent"
+            title={!expanded ? "Create Admin" : undefined}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent",
+              !expanded && "justify-center px-0"
+            )}
           >
             <ShieldCheck className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Create Admin</span>}
+            {expanded && <span>Create Admin</span>}
           </NavLink>
         )}
         {canAccessSettings && (
           <NavLink
             to="/settings"
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent"
+            title={!expanded ? "Settings" : undefined}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent",
+              !expanded && "justify-center px-0"
+            )}
           >
             <Settings className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Settings</span>}
+            {expanded && <span>Settings</span>}
           </NavLink>
         )}
         <NavLink
           to="/mfa"
-          className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent"
+          title={!expanded ? "Two-factor auth" : undefined}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent",
+            !expanded && "justify-center px-0"
+          )}
         >
           <Shield className="h-4 w-4 shrink-0" />
-          {!collapsed && <span>Two-factor auth</span>}
+          {expanded && <span>Two-factor auth</span>}
         </NavLink>
         <button
           onClick={onLogout}
-          className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent w-full"
+          title={!expanded ? "Logout" : undefined}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent w-full",
+            !expanded && "justify-center px-0"
+          )}
         >
           <LogOut className="h-4 w-4 shrink-0" />
-          {!collapsed && <span>Logout</span>}
+          {expanded && <span>Logout</span>}
         </button>
       </div>
     </motion.aside>

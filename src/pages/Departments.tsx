@@ -2,7 +2,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, ChevronRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Search, Plus, ChevronRight } from "lucide-react";
 import { useDepartments } from "@/hooks/useDepartments";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useAuth } from "@/auth/useAuth";
@@ -12,7 +14,6 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 
@@ -40,6 +41,13 @@ const Departments = () => {
   const canManage = canManageDepartments(role);
 
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filtered = departments.filter((d) => {
+    const term = search.toLowerCase();
+    const haystack = `${d.name} ${d.code}`.toLowerCase();
+    return haystack.includes(term);
+  });
 
   const form = useForm<CreateDepartmentValues>({
     resolver: zodResolver(createDepartmentSchema),
@@ -87,6 +95,7 @@ const Departments = () => {
       <PageHeader
         title="Departments"
         description="Organizational structure and department management"
+        breadcrumb={<span>Home / Departments</span>}
         actions={
           canManage && (
             <Dialog open={open} onOpenChange={setOpen}>
@@ -178,16 +187,23 @@ const Departments = () => {
 
       <Card>
         <CardContent className="pt-4">
-          {isLoading && (
-            <div className="text-sm text-muted-foreground mb-4">
-              Loading departments...
-            </div>
-          )}
           {error && (
             <div className="text-sm text-destructive mb-4">
               Failed to load departments.
             </div>
           )}
+
+          <div className="flex gap-3 mb-4 items-center">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or code..."
+                className="pl-8 h-9"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
 
           <Table>
             <TableHeader>
@@ -201,7 +217,15 @@ const Departments = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {departments.length === 0 ? (
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={6}>
+                      <Skeleton className="h-6 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={6}
@@ -211,7 +235,7 @@ const Departments = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                departments.map((dept) => (
+                filtered.map((dept) => (
                   <TableRow key={dept.id} className="cursor-pointer hover:bg-muted/50">
                     <TableCell>
                       <div>

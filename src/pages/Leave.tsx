@@ -4,14 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, Search } from "lucide-react";
 import { useLeaveBalances, useLeaveMutations, useLeaveRequests, useLeaveTypes } from "@/hooks/useLeave";
 import { useAuth } from "@/auth/useAuth";
 import { getCanonicalRole, canApproveLeave } from "@/auth/roles";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,6 +39,8 @@ const Leave = () => {
   const { createRequest, creating, updateStatus, updating } = useLeaveMutations();
 
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
 
   const form = useForm<CreateLeaveValues>({
     resolver: zodResolver(createLeaveSchema),
@@ -108,11 +111,22 @@ const Leave = () => {
     (r) => isApprover || r.user_id === user?.id
   );
 
+  const filteredRequests = myRequests.filter((r) => {
+    const term = search.toLowerCase();
+    const matchesSearch =
+      r.user_email?.toLowerCase().includes(term) ||
+      r.leave_types?.name?.toLowerCase().includes(term) ||
+      r.id.toLowerCase().includes(term);
+    const matchesStatus = statusFilter === "all" || r.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div>
       <PageHeader
         title="Leave Management"
         description="Leave requests, balances, and approval workflows"
+        breadcrumb={<span>Home / Leave</span>}
         actions={
           user && (
             <Dialog open={open} onOpenChange={setOpen}>
@@ -214,16 +228,39 @@ const Leave = () => {
         <TabsContent value="requests">
           <Card>
             <CardContent className="pt-4">
-              {loadingRequests && (
-                <div className="text-sm text-muted-foreground mb-4">
-                  Loading leave requests...
-                </div>
-              )}
               {requestsError && (
                 <div className="text-sm text-destructive mb-4">
                   Failed to load leave requests.
                 </div>
               )}
+
+              <div className="flex gap-3 mb-4 items-center">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by employee or type..."
+                    className="pl-8 h-9"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) =>
+                    setStatusFilter(v as "all" | "pending" | "approved" | "rejected")
+                  }
+                >
+                  <SelectTrigger className="w-40 h-9">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
               <Table>
                 <TableHeader>
@@ -240,7 +277,26 @@ const Leave = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {myRequests.map((lr) => (
+                  {loadingRequests
+                    ? Array.from({ length: 6 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell colSpan={9}>
+                            <Skeleton className="h-6 w-full" />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    : filteredRequests.length === 0
+                      ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={9}
+                            className="py-6 text-center text-sm text-muted-foreground"
+                          >
+                            No leave requests found.
+                          </TableCell>
+                        </TableRow>
+                        )
+                      : filteredRequests.map((lr) => (
                     <TableRow key={lr.id}>
                       <TableCell className="text-sm font-mono text-muted-foreground">
                         {lr.id.slice(0, 8)}

@@ -47,7 +47,13 @@ const AuditLogs = () => {
       <PageHeader
         title="Audit Logs"
         description="System-wide activity tracking and compliance audit trail"
-        actions={<Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4 mr-1" />Export</Button>}
+        breadcrumb={<span>Home / Audit Logs</span>}
+        actions={
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-1" />
+            Export
+          </Button>
+        }
       />
 
       <Card>

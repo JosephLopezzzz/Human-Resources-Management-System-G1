@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";  
+import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useEmployees } from "@/hooks/useEmployees";
@@ -144,6 +145,7 @@ const Employees = () => {
       <PageHeader
         title="Employees"
         description="Manage employee records and lifecycle"
+        breadcrumb={<span>Home / Employees</span>}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={handleExport}>
@@ -348,18 +350,13 @@ const Employees = () => {
 
       <Card>
         <CardContent className="pt-4">
-          {isLoading && (
-            <div className="text-sm text-muted-foreground mb-4">
-              Loading employees...
-            </div>
-          )}
           {error && (
             <div className="text-sm text-destructive mb-4">
               Failed to load employees.
             </div>
           )}
 
-          <div className="flex gap-3 mb-4">
+          <div className="flex gap-3 mb-4 items-center">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Search by name or ID..." className="pl-8 h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -390,7 +387,15 @@ const Employees = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginated.length === 0 ? (
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={7}>
+                      <Skeleton className="h-6 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : paginated.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={7}

@@ -57,8 +57,9 @@ const Dashboard = () => {
   const pendingLeaveCount = leaveRequests.filter((r) => r.status === "pending").length;
   const probationCount = employees.filter((e) => e.status === "probation").length;
   const totalNetPay = (payrollItems ?? []).reduce((s, i) => s + i.net_pay, 0);
-  const attendancePct =
-    employees.length > 0 ? ((presentCount / employees.length) * 100).toFixed(1) : "0";
+  const attendancePctRaw =
+    employees.length > 0 ? (presentCount / employees.length) * 100 : 0;
+  const attendancePct = attendancePctRaw.toFixed(1);
   const recentActivity = auditLogs.slice(0, 5).map(mapLogToActivity);
 
   return (
@@ -66,10 +67,11 @@ const Dashboard = () => {
       <PageHeader
         title="Dashboard"
         description="Overview of your BLUEPEAK HR operations and workforce insights."
+        breadcrumb={<span>Home</span>}
       />
 
       {/* Bento-style summary grid */}
-      <AnimatedList className="mb-6 grid auto-rows-[minmax(130px,auto)] gap-4 md:grid-cols-4">
+      <AnimatedList className="mb-6 grid auto-rows-[minmax(130px,auto)] gap-5 md:grid-cols-4">
         <motion.div
           className="md:col-span-2 row-span-2"
           variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
@@ -92,6 +94,7 @@ const Dashboard = () => {
                 value={presentCount}
                 change={`${attendancePct}% attendance`}
                 changeType="positive"
+                progress={attendancePctRaw}
               />
               <StatCard
                 icon={CalendarDays}
@@ -163,7 +166,7 @@ const Dashboard = () => {
       </AnimatedList>
 
       {/* Bottom bento row: activity + quick stats */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card className="h-full">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">Recent activity</CardTitle>
@@ -223,32 +226,46 @@ const Dashboard = () => {
 
         <Card className="h-full">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Quick stats</CardTitle>
+            <CardTitle className="text-base font-semibold">Quick stats & actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
-              <span className="text-sm text-muted-foreground">Pending leave requests</span>
-              <span className="text-sm font-semibold">{pendingLeaveCount}</span>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
+                <p className="text-[11px] text-muted-foreground">Pending leave</p>
+                <p className="text-sm font-semibold">{pendingLeaveCount}</p>
+              </div>
+              <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
+                <p className="text-[11px] text-muted-foreground">On probation</p>
+                <p className="text-sm font-semibold">{probationCount}</p>
+              </div>
+              <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
+                <p className="text-[11px] text-muted-foreground">Present today</p>
+                <p className="text-sm font-semibold">{presentCount}</p>
+              </div>
+              <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
+                <p className="text-[11px] text-muted-foreground">Departments</p>
+                <p className="text-sm font-semibold">{departments.length}</p>
+              </div>
             </div>
-            <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
-              <span className="text-sm text-muted-foreground">Employees on probation</span>
-              <span className="text-sm font-semibold">{probationCount}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
-              <span className="text-sm text-muted-foreground">Present today</span>
-              <span className="text-sm font-semibold">{presentCount}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
-              <span className="text-sm text-muted-foreground">Departments</span>
-              <span className="text-sm font-semibold">{departments.length}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
-              <span className="text-sm text-muted-foreground">Payroll items (current)</span>
-              <span className="text-sm font-semibold">{payrollItems?.length ?? 0}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
-              <span className="text-sm text-muted-foreground">Audit log entries</span>
-              <span className="text-sm font-semibold">{auditLogs.length}</span>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <a
+                href="/employees"
+                className="inline-flex items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                View employees
+              </a>
+              <a
+                href="/leave"
+                className="inline-flex items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                Approve leave
+              </a>
+              <a
+                href="/payroll"
+                className="inline-flex items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors col-span-2"
+              >
+                Open payroll run
+              </a>
             </div>
           </CardContent>
         </Card>

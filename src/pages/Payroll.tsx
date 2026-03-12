@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "@/components/StatCard";
-import { DollarSign, Lock, FileText, AlertTriangle, RefreshCw } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { DollarSign, Lock, FileText, AlertTriangle, RefreshCw, Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePayroll, usePayrollRuns, usePayrollItemsForRun } from "@/hooks/usePayroll";
 import { useAuth } from "@/auth/useAuth";
@@ -24,9 +26,21 @@ const Payroll = () => {
   const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
   const canManage = canManagePayroll(role) || canApprovePayrollOrViewReports(role);
 
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+
   const totalGross = items.reduce((sum, i) => sum + i.base_salary + i.allowances, 0);
   const totalNet = items.reduce((sum, i) => sum + i.net_pay, 0);
   const pendingCount = items.filter((i) => i.status === "pending").length;
+
+  const filteredItems = items.filter((i) => {
+    const term = search.toLowerCase();
+    const matchesSearch =
+      i.user_email.toLowerCase().includes(term) ||
+      i.user_id.toLowerCase().includes(term);
+    const matchesStatus = statusFilter === "all" || i.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const periodLabel =
     run && run.period_start && run.period_end
@@ -70,6 +84,7 @@ const Payroll = () => {
       <PageHeader
         title="Payroll"
         description="Monthly payroll processing and salary management"
+        breadcrumb={<span>Home / Payroll</span>}
         actions={
           canManage && (
             <>
@@ -190,16 +205,39 @@ const Payroll = () => {
                   )}
                 </div>
               )}
-              {itemsLoading && (
-                <div className="text-sm text-muted-foreground mb-2">
-                  Loading items...
-                </div>
-              )}
               {itemsError && (
                 <div className="text-sm text-destructive mb-2">
                   Failed to load payroll items.
                 </div>
               )}
+
+              <div className="flex gap-3 mb-4 items-center">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by employee or ID..."
+                    className="pl-8 h-9"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) =>
+                    setStatusFilter(v as "all" | "pending" | "approved" | "rejected")
+                  }
+                >
+                  <SelectTrigger className="w-40 h-9">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
               <Table>
                 <TableHeader>
@@ -214,7 +252,15 @@ const Payroll = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-              {items.length === 0 ? (
+              {itemsLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={7}>
+                      <Skeleton className="h-6 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : filteredItems.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={7}
@@ -224,7 +270,7 @@ const Payroll = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map((pr) => (
+                filteredItems.map((pr) => (
                   <TableRow key={pr.id}>
                     <TableCell>
                       <p className="text-sm font-medium">{pr.user_email}</p>

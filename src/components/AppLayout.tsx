@@ -11,7 +11,7 @@ export function AppLayout() {
       <AppSidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <AppTopbar />
-        <main className="flex-1 overflow-y-auto px-6 py-4">
+        <main className="flex-1 overflow-y-auto px-6 py-5">
           <Outlet />
         </main>
         <footer className="border-t px-6 py-3 text-xs text-muted-foreground flex items-center justify-between">

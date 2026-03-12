@@ -35,6 +35,7 @@ const Attendance = () => {
       <PageHeader
         title="Attendance"
         description="Daily attendance tracking and overtime management"
+        breadcrumb={<span>Home / Attendance</span>}
         actions={
           <Button
             size="sm"
