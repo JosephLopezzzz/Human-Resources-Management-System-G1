@@ -106,7 +106,7 @@ export default function AdminCreateAdmin() {
       }
       const { data, errorMessage } = await invokeFunction<
         { email: string; password: string; name: string; role: string; username?: string },
-        { user?: { id?: string } }
+        { user?: { id?: string }; updated?: boolean }
       >("admin-create-user", token, {
         email,
         password,
@@ -120,7 +120,11 @@ export default function AdminCreateAdmin() {
         return;
       }
 
-      setSuccess(`System Administrator created. User id: ${data?.user?.id ?? ""}. This action is logged in Audit Logs (ADMIN_CREATE_ADMIN).`);
+      setSuccess(
+        data?.updated
+          ? `Existing account updated to System Administrator. User id: ${data?.user?.id ?? ""}. This action is logged in Audit Logs (ADMIN_UPDATE_USER).`
+          : `System Administrator created. User id: ${data?.user?.id ?? ""}. This action is logged in Audit Logs (ADMIN_CREATE_ADMIN).`
+      );
       setEmail("");
       setPassword("");
       setConfirmPassword("");

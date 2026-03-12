@@ -17,49 +17,79 @@ export async function invokeFunction<TBody, TData>(
   accessToken: string,
   body: TBody
 ): Promise<{ data: TData | null; errorMessage: string | null }> {
-  const url = `${supabaseUrl}/functions/v1/${name}`;
-  let res: Response;
   try {
-    res = await fetch(url, {
-      method: "POST",
+    const { data, error } = await supabase.functions.invoke<TData>(name, {
+      body,
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
-        apikey: supabaseAnonKey,
       },
-      body: JSON.stringify(body),
     });
+
+    if (error) {
+      const anyErr = error as unknown as {
+        name?: unknown;
+        message?: unknown;
+        context?: unknown;
+      };
+      const errName = typeof anyErr?.name === "string" ? anyErr.name : "EdgeFunctionError";
+      const errMsg = typeof anyErr?.message === "string" ? anyErr.message : "Request failed.";
+      const ctx = anyErr?.context as
+        | { status?: number; statusText?: string; body?: unknown; headers?: unknown }
+        | undefined;
+
+      const statusPart =
+        typeof ctx?.status === "number"
+          ? `HTTP ${ctx.status}${typeof ctx.statusText === "string" ? ` (${ctx.statusText})` : ""}`
+          : null;
+
+      const bodyPart =
+        ctx?.body != null
+          ? (() => {
+              try {
+                return typeof ctx.body === "string" ? ctx.body : JSON.stringify(ctx.body);
+              } catch {
+                return String(ctx.body);
+              }
+            })()
+          : null;
+
+      const extra = [statusPart, bodyPart].filter(Boolean).join("\n");
+      const combined = extra ? `${errName}: ${errMsg}\n\n${extra}` : `${errName}: ${errMsg}`;
+      return { data: null, errorMessage: combined };
+    }
+
+    return { data: (data ?? null) as TData | null, errorMessage: null };
   } catch (err) {
+    const urlHint = `Tried to reach: ${supabaseUrl.replace(/\/+$/, "")}/functions/v1/${name}`;
+    const localHint =
+      supabaseUrl.includes("localhost") || supabaseUrl.includes("127.0.0.1")
+        ? "It looks like you're pointing to a local Supabase URL. Make sure Supabase is running (e.g. `supabase start`) OR switch VITE_SUPABASE_URL to your hosted project URL."
+        : "Make sure VITE_SUPABASE_URL points to your hosted project (format: https://YOUR_PROJECT_REF.supabase.co) and has no trailing slash.";
+    const deployHint =
+      !supabaseUrl.includes("localhost") && !supabaseUrl.includes("127.0.0.1")
+        ? "If using a hosted project, deploy the Edge Function: `supabase functions deploy " +
+          (name.includes("/") ? name.split("/")[0] : name) +
+          "` (after `supabase login` and `supabase link --project-ref YOUR_REF`)."
+        : "";
+    const isFetchErr =
+      err instanceof TypeError && (err.message === "Failed to fetch" || err.message?.includes("fetch"));
+    const isFunctionsFetchErr =
+      err instanceof Error &&
+      (err.name === "FunctionsFetchError" || err.message?.includes("Failed to send a request to the Edge Function"));
     const msg =
-      err instanceof TypeError && (err.message === "Failed to fetch" || err.message?.includes("fetch"))
-        ? "Could not reach the server. Check that .env has VITE_SUPABASE_URL set to your hosted project (e.g. https://YOUR_PROJECT_REF.supabase.co, no trailing slash) and that you have internet access. If the app runs on http://localhost, the URL must be https."
+      isFetchErr || isFunctionsFetchErr
+        ? [
+            err instanceof Error ? err.message : "Could not reach Edge Function.",
+            "",
+            urlHint,
+            localHint,
+            deployHint,
+          ]
+            .filter(Boolean)
+            .join("\n\n")
         : err instanceof Error
           ? err.message
           : "Network error.";
     return { data: null, errorMessage: msg };
   }
-  const text = await res.text();
-  let json: unknown = null;
-  try {
-    json = text ? JSON.parse(text) : null;
-  } catch {
-    // ignore
-  }
-  if (!res.ok) {
-    const obj = json && typeof json === "object" ? (json as Record<string, unknown>) : null;
-    const errMsg = typeof obj?.error === "string" ? obj.error : null;
-    const detail = typeof obj?.detail === "string" ? obj.detail : null;
-    let msg = errMsg
-      ? detail
-        ? `${errMsg} (${detail})`
-        : errMsg
-      : res.statusText || `Request failed (${res.status})`;
-    // Gateway 401 = request never reached our function. Tell user to deploy with CLI so verify_jwt is off.
-    if (res.status === 401 && !errMsg) {
-      msg =
-        "The server rejected the request (401). Deploy the Edge Function with JWT verification OFF so the request reaches the function. See DEPLOY.md in the project root for exact steps.";
-    }
-    return { data: null, errorMessage: msg };
-  }
-  return { data: json as TData, errorMessage: null };
 }

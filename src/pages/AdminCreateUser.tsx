@@ -101,7 +101,7 @@ export default function AdminCreateUser() {
       }
       const { data, errorMessage } = await invokeFunction<
         { email: string; password: string; name: string; role: string; username?: string },
-        { user?: { id?: string } }
+        { user?: { id?: string }; updated?: boolean }
       >("admin-create-user", token, {
         email,
         password,
@@ -115,7 +115,11 @@ export default function AdminCreateUser() {
         return;
       }
 
-      setSuccess(`User created with id ${data?.user?.id ?? ""}`);
+      setSuccess(
+        data?.updated
+          ? `Existing user updated. User id: ${data?.user?.id ?? ""}`
+          : `User created with id ${data?.user?.id ?? ""}`
+      );
       setEmail("");
       setPassword("");
       setConfirmPassword("");
