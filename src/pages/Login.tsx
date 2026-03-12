@@ -209,7 +209,7 @@ export default function Login() {
       <div className="flex w-full min-h-screen bg-background overflow-hidden">
         {/* Left marketing panel */}
         <motion.div
-          className="hidden lg:flex w-[48%] flex-col justify-center px-10 py-10 text-slate-50 relative bg-cover bg-center"
+          className="hidden lg:flex w-[50%] flex-col justify-center px-12 py-12 text-slate-50 relative bg-cover bg-center"
           style={{
             backgroundImage:
               "linear-gradient(to bottom right, rgba(2,6,23,0.88), rgba(15,23,42,0.96)), url('/favicon1/professional_card.png')",
@@ -220,12 +220,12 @@ export default function Login() {
         >
           <div>
             <motion.div
-              className="flex items-center gap-3 mb-12 px-1"
+              className="flex items-center gap-4 mb-14 px-1"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 260, damping: 22 }}
             >
-              <div className="h-11 w-11 rounded-2xl bg-slate-900/90 border border-slate-500/70 flex items-center justify-center overflow-hidden shadow-sm">
+              <div className="h-14 w-14 rounded-2xl bg-slate-900/90 border border-slate-500/70 flex items-center justify-center overflow-hidden shadow-sm">
                 <img
                   src="/favicon1/bluepeak-favicon.jpg"
                   alt="BLUEPEAK"
@@ -233,10 +233,10 @@ export default function Login() {
                 />
               </div>
               <div className="flex flex-col">
-                <span className="text-[11px] uppercase tracking-[0.32em] text-slate-300">
+                <span className="text-xs uppercase tracking-[0.32em] text-slate-200">
                   BLUEPEAK
                 </span>
-                <span className="text-sm sm:text-base font-medium text-slate-100">
+                <span className="text-lg font-semibold text-slate-50">
                   Finance &amp; Human Resources Management
                 </span>
               </div>
@@ -244,18 +244,18 @@ export default function Login() {
 
             <StaggerContainer className="space-y-4">
               <StaggerItem>
-                <h1 className="text-4xl font-semibold leading-tight">
+                <h1 className="text-4xl lg:text-[2.7rem] font-semibold leading-tight">
                   Smart workforce &amp; financial management, simplified.
                 </h1>
               </StaggerItem>
               <StaggerItem>
-                <p className="text-sm sm:text-base text-slate-200 max-w-xl">
+                <p className="text-xs sm:text-sm text-slate-200/90 max-w-xl">
                   Real-time attendance, payroll, and performance insights in a single secure HR
                   command center built for modern teams.
                 </p>
               </StaggerItem>
               <StaggerItem>
-                <ul className="mt-5 space-y-2.5 text-sm sm:text-base text-slate-100">
+                <ul className="mt-5 space-y-2 text-xs sm:text-sm text-slate-100/95">
                   <li className="flex items-start gap-2">
                     <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
                     Real-time attendance and leave tracking
