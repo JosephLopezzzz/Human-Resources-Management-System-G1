@@ -13,13 +13,13 @@ interface OTPModalProps {
 const OTPModal: React.FC<OTPModalProps> = ({ isOpen, onClose, onVerify, onResend, email }) => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
+  const [timeLeft, setTimeLeft] = useState(60); // 1 minute
   const [canResend, setCanResend] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
       setOtp(['', '', '', '', '', '']);
-      setTimeLeft(600);
+      setTimeLeft(60);
       setCanResend(false);
     }
   }, [isOpen]);

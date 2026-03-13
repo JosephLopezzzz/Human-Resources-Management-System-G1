@@ -206,6 +206,31 @@ serve(async (req) => {
 
   // OTP send endpoint
   if (path === "/send-otp" && req.method === "POST") {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace("Bearer ", "");
+
+    if (!token) {
+      return jsonResponse(JSON.stringify({ error: "Missing bearer token" }), 401, req);
+    }
+
+    // Verify the caller is an authorized admin/hr
+    const {
+      data: { user: caller },
+      error: callerError,
+    } = await adminClient.auth.getUser(token);
+
+    if (callerError || !caller) {
+      return jsonResponse(JSON.stringify({ error: "Unauthorized" }), 401, req);
+    }
+
+    const callerRoleRaw = (caller.user_metadata?.role as string | undefined) ?? "";
+    const callerRole = callerRoleRaw.trim().toLowerCase();
+    const isAuthorized = callerRole === "admin" || callerRole === "system_admin" || callerRole === "hr_manager" || callerRole === "hr";
+
+    if (!isAuthorized) {
+      return jsonResponse(JSON.stringify({ error: "Forbidden: only admins or HR can send OTPs" }), 403, req);
+    }
+
     const { email } = await req.json();
 
     if (!email) {
@@ -216,23 +241,18 @@ serve(async (req) => {
     const sent = await sendOTP(email, otp);
 
     if (sent) {
-      // Store OTP in database (you'll need to create an otp_codes table)
-      try {
-        await adminClient.from("otp_codes").upsert({
-          email: email,
-          code: otp,
-          created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
-        });
-      } catch {
-        // If table doesn't exist, just log for now
-        console.log(`[DEV MODE] OTP ${otp} stored for ${email}`);
-      }
+      // Store OTP in database
+      await adminClient.from("otp_codes").upsert({
+        email: email,
+        code: otp,
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
+      });
 
       return jsonResponse(
         JSON.stringify({
           message: "OTP sent successfully",
-          // Remove otp in production, only for development
+          // Only return OTP in dev mode (when RESEND_API_KEY is missing)
           otp: Deno.env.get("RESEND_API_KEY") ? undefined : otp,
         }),
         200,
@@ -322,14 +342,38 @@ serve(async (req) => {
     }
 
     const body = (await req.json().catch(() => null)) as
-      | { email?: string; password?: string; name?: string; role?: string; username?: string }
+      | {
+          email?: string;
+          password?: string;
+          name?: string;
+          role?: string;
+          username?: string;
+          otp?: string;
+        }
       | null;
 
-    if (!body?.email || !body?.password) {
-      return jsonResponse(JSON.stringify({ error: "Missing email or password" }), 400, req);
+    if (!body?.email || !body?.password || !body?.otp) {
+      return jsonResponse(JSON.stringify({ error: "Missing email, password, or OTP" }), 400, req);
     }
 
-    const { email, password, name, role: newRole, username: rawUsername } = body;
+    const { email, password, name, role: newRole, username: rawUsername, otp } = body;
+
+    // Verify OTP
+    const { data: otpRecord, error: otpError } = await adminClient
+      .from("otp_codes")
+      .select("*")
+      .eq("email", email)
+      .eq("code", otp)
+      .gt("expires_at", new Date().toISOString())
+      .limit(1)
+      .maybeSingle();
+
+    if (otpError || !otpRecord) {
+      return jsonResponse(JSON.stringify({ error: "Invalid or expired OTP" }), 400, req);
+    }
+
+    // Delete used OTP
+    await adminClient.from("otp_codes").delete().eq("email", email).eq("code", otp);
 
     const pw = validatePassword(password);
     if (!pw.isValid) {

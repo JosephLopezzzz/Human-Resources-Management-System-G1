@@ -16,6 +16,7 @@ import {
   type RoleKey,
 } from "@/auth/roles";
 import { Eye, EyeOff } from "lucide-react";
+import OTPModal from "@/components/OTPModal";
 
 export default function AdminCreateUser() {
   const { user, session } = useAuth();
@@ -37,6 +38,7 @@ export default function AdminCreateUser() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
+  const [isOTPModalOpen, setIsOTPModalOpen] = React.useState(false);
 
   const passwordChecks = React.useMemo(() => {
     const value = password ?? "";
@@ -99,15 +101,81 @@ export default function AdminCreateUser() {
         setLoading(false);
         return;
       }
+
+      // Call send-otp instead of create-user
+      const { errorMessage } = await invokeFunction<
+        { email: string },
+        { message: string }
+      >("admin-create-user/send-otp", token, { email });
+
+      if (errorMessage) {
+        setError(errorMessage);
+        return;
+      }
+
+      setIsOTPModalOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send OTP.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResendOTP() {
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+
+    try {
+      const { data: { session: freshSession }, error: refreshError } = await supabase.auth.refreshSession();
+      const token = freshSession?.access_token;
+      if (refreshError || !token) {
+        setError("Session expired. Please log out and log back in.");
+        setLoading(false);
+        return;
+      }
+
+      const { errorMessage } = await invokeFunction<
+        { email: string },
+        { message: string }
+      >("admin-create-user/send-otp", token, { email });
+
+      if (errorMessage) {
+        setError(errorMessage);
+        return;
+      }
+
+      setSuccess("OTP resent successfully!");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to resend OTP.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerifyAndCreate(otp: string) {
+    setError(null);
+    setLoading(true);
+
+    try {
+      const { data: { session: freshSession }, error: refreshError } = await supabase.auth.refreshSession();
+      const token = freshSession?.access_token;
+      if (refreshError || !token) {
+        setError("Session expired. Please log out and log back in.");
+        setLoading(false);
+        return;
+      }
+
       const { data, errorMessage } = await invokeFunction<
-        { email: string; password: string; name: string; role: string; username?: string },
+        { email: string; password: string; name: string; role: string; username?: string; otp: string },
         { user?: { id?: string }; updated?: boolean }
-      >("admin-create-user", token, {
+      >("admin-create-user/create-user", token, {
         email,
         password,
         name: name || "User",
         role: selectedRole,
         username: username || undefined,
+        otp,
       });
 
       if (errorMessage) {
@@ -120,6 +188,7 @@ export default function AdminCreateUser() {
           ? `Existing user updated. User id: ${data?.user?.id ?? ""}`
           : `User created with id ${data?.user?.id ?? ""}`
       );
+      setIsOTPModalOpen(false);
       setEmail("");
       setPassword("");
       setConfirmPassword("");
@@ -303,6 +372,14 @@ export default function AdminCreateUser() {
           </CardContent>
         </Card>
       </div>
+
+      <OTPModal
+        isOpen={isOTPModalOpen}
+        onClose={() => setIsOTPModalOpen(false)}
+        onVerify={handleVerifyAndCreate}
+        onResend={handleResendOTP}
+        email={email}
+      />
     </div>
   );
 }
