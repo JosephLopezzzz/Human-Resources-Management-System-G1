@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "@/components/StatCard";
-import { Clock, UserCheck, AlertTriangle, Timer } from "lucide-react";
+import { Clock, UserCheck, AlertTriangle, Timer, Coffee } from "lucide-react";
 import { useTodayAttendance } from "@/hooks/useAttendance";
 import { useAuth } from "@/auth/useAuth";
-import { format } from "date-fns";
+import { format, intervalToDuration, formatDuration } from "date-fns";
+import { useState, useEffect } from "react";
 
 const Attendance = () => {
-  const { logs, isLoading, error, clockInOut, clocking } = useTodayAttendance();
+  const { logs, isLoading, error, clockInOut, clocking, startLunch, endLunch, lunching } = useTodayAttendance();
   const { user } = useAuth();
 
   const openLog = user
@@ -23,12 +24,62 @@ const Attendance = () => {
     ? "Clock Out"
     : "Clock In";
 
+  const isOnLunch = openLog && openLog.lunch_start_time && !openLog.lunch_end_time;
+
   async function handleClock() {
     if (!user) return;
     await clockInOut({ userId: user.id, email: user.email ?? "" });
   }
 
+  async function handleLunch() {
+    if (!openLog) return;
+    const action = isOnLunch ? "end" : "start";
+    await (action === "start" ? startLunch({ logId: openLog.id, action: "start" }) : endLunch({ logId: openLog.id, action: "end" }));
+  }
+
   const todayLabel = format(new Date(), "MMM d, yyyy");
+
+  const [totalAccumulatedMs, setTotalAccumulatedMs] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      let totalMs = 0;
+
+      const userLogs = logs.filter((l) => l.user_id === user.id);
+
+      userLogs.forEach((log) => {
+        const clockIn = new Date(log.clock_in_at);
+        const clockOut = log.clock_out_at ? new Date(log.clock_out_at) : now;
+
+        let sessionMs = clockOut.getTime() - clockIn.getTime();
+
+        if (log.lunch_start_time) {
+          const lunchStart = new Date(log.lunch_start_time);
+          const lunchEnd = log.lunch_end_time ? new Date(log.lunch_end_time) : now;
+          const lunchMs = lunchEnd.getTime() - lunchStart.getTime();
+          sessionMs -= lunchMs;
+        }
+
+        totalMs += Math.max(0, sessionMs);
+      });
+
+      setTotalAccumulatedMs(totalMs);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [logs, user]);
+
+  const formatMs = (ms: number) => {
+    const hours = Math.floor(ms / 3600000);
+    const minutes = Math.floor((ms % 3600000) / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${hours}h ${minutes}m ${seconds}s`;
+  };
+
+  const accumulatedTimeDisplay = formatMs(totalAccumulatedMs);
 
   return (
     <div>
@@ -37,14 +88,28 @@ const Attendance = () => {
         description="Daily attendance tracking and overtime management"
         breadcrumb={<span>Home / Attendance</span>}
         actions={
-          <Button
-            size="sm"
-            onClick={handleClock}
-            disabled={!user || clocking}
-          >
-            <Clock className="h-4 w-4 mr-1" />
-            {clocking ? "Saving..." : buttonLabel}
-          </Button>
+          <>
+            <Button
+              size="sm"
+              onClick={handleClock}
+              disabled={!user || clocking || isOnLunch}
+            >
+              <Clock className="h-4 w-4 mr-1" />
+              {clocking ? "Saving..." : buttonLabel}
+            </Button>
+
+            {openLog && !openLog.clock_out_at && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleLunch}
+                disabled={lunching}
+              >
+                <Coffee className="h-4 w-4 mr-1" />
+                {lunching ? "Saving..." : isOnLunch ? "End Lunch" : "Start Lunch"}
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -77,6 +142,13 @@ const Attendance = () => {
           change="Total records today"
           changeType="neutral"
         />
+        <StatCard
+          icon={Timer}
+          title="Accumulated Time"
+          value={accumulatedTimeDisplay}
+          change="Today"
+          changeType="positive"
+        />
       </div>
 
       <Card>
@@ -100,30 +172,59 @@ const Attendance = () => {
               <TableRow>
                 <TableHead>User</TableHead>
                 <TableHead>Clock In</TableHead>
+                <TableHead>Lunch Start</TableHead>
+                <TableHead>Lunch End</TableHead>
                 <TableHead>Clock Out</TableHead>
+                <TableHead>Total Hours</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {logs.map((row) => {
-                const clockIn = format(new Date(row.clock_in_at), "HH:mm");
-                const clockOut = row.clock_out_at
-                  ? format(new Date(row.clock_out_at), "HH:mm")
-                  : "—";
-                const status =
-                  row.clock_out_at === null ? ("pending" as const) : ("active" as const);
-
                 return (
                   <TableRow key={row.id}>
                     <TableCell>
                       <p className="text-sm font-medium">{row.user_email}</p>
                     </TableCell>
-                    <TableCell className="text-sm font-mono">{clockIn}</TableCell>
-                    <TableCell className="text-sm font-mono">{clockOut}</TableCell>
+                    <TableCell className="text-sm font-mono">
+                      {format(new Date(row.clock_in_at), "HH:mm")}
+                    </TableCell>
+                    <TableCell className="text-sm font-mono">
+                      {row.lunch_start_time ? format(new Date(row.lunch_start_time), "HH:mm") : "—"}
+                    </TableCell>
+                    <TableCell className="text-sm font-mono">
+                      {row.lunch_end_time ? format(new Date(row.lunch_end_time), "HH:mm") : "—"}
+                    </TableCell>
+                    <TableCell className="text-sm font-mono">
+                      {row.clock_out_at ? format(new Date(row.clock_out_at), "HH:mm") : "—"}
+                    </TableCell>
+                    <TableCell className="text-sm font-mono">
+                      {row.clock_out_at
+                        ? formatDuration(
+                            intervalToDuration({
+                              start: new Date(row.clock_in_at),
+                              end: new Date(row.clock_out_at),
+                            }),
+                            { format: ["hours", "minutes"] }
+                          )
+                        : "—"}
+                    </TableCell>
                     <TableCell>
                       <StatusBadge
-                        status={status}
-                        label={status === "active" ? "Completed" : "In Progress"}
+                        status={
+                          row.lunch_start_time && !row.lunch_end_time
+                            ? "warning"
+                            : row.clock_out_at
+                            ? "success"
+                            : "info"
+                        }
+                        label={
+                          row.lunch_start_time && !row.lunch_end_time
+                            ? "On Lunch"
+                            : row.clock_out_at
+                            ? "Completed"
+                            : "Clocked In"
+                        }
                       />
                     </TableCell>
                   </TableRow>

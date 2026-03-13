@@ -9,6 +9,8 @@ const attendanceSchema = z.object({
   day: z.string(),
   clock_in_at: z.string(),
   clock_out_at: z.string().nullable(),
+  lunch_start_time: z.string().nullable(),
+  lunch_end_time: z.string().nullable(),
 });
 
 export type AttendanceLog = z.infer<typeof attendanceSchema>;
@@ -72,11 +74,34 @@ export function useTodayAttendance() {
     },
   });
 
+  const lunchMutation = useMutation({
+    mutationFn: async (opts: { logId: string; action: "start" | "end" }) => {
+      const now = new Date().toISOString();
+      const payload = opts.action === "start"
+        ? { lunch_start_time: now }
+        : { lunch_end_time: now };
+
+      const { error } = await supabase
+        .from("attendance_logs")
+        .update(payload)
+        .eq("id", opts.logId);
+
+      if (error) throw error;
+      return opts.action;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["attendance", today] });
+    },
+  });
+
   return {
     ...listQuery,
     logs: listQuery.data ?? [],
     clockInOut: clockMutation.mutateAsync,
     clocking: clockMutation.isPending,
+    startLunch: lunchMutation.mutateAsync,
+    endLunch: lunchMutation.mutateAsync,
+    lunching: lunchMutation.isPending,
   };
 }
 
