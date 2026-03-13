@@ -47,6 +47,8 @@ export function useLeaveTypes() {
       if (error) throw error;
       return z.array(leaveTypeSchema).parse(data ?? []);
     },
+    retry: 2,
+    retryDelay: 600,
   });
 }
 
@@ -61,6 +63,11 @@ export function useLeaveRequests() {
       if (error) throw error;
       return z.array(leaveRequestSchema).parse(data ?? []);
     },
+    retry: (failureCount, error) => {
+      if (error?.name === "AbortError") return failureCount < 2;
+      return failureCount < 2;
+    },
+    retryDelay: 800,
   });
 }
 
@@ -74,6 +81,8 @@ export function useLeaveBalances() {
       if (error) throw error;
       return z.array(leaveBalanceSchema).parse(data ?? []);
     },
+    retry: (failureCount) => failureCount < 2,
+    retryDelay: 800,
   });
 }
 

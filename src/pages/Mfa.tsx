@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/auth/useAuth";
 import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { setMfaDeadlineFromNow } from "@/auth/authStorage";
@@ -26,16 +27,19 @@ export default function Mfa() {
   React.useEffect(() => {
     if (!user) return;
     let cancelled = false;
+    const mfa = (supabase.auth as { mfa?: { listFactors?: () => Promise<{ data?: { totp?: { id: string }[] }; error?: { message: string } }> } }).mfa;
 
     (async () => {
-      const { data, error: listError } = await supabase.auth.mfa.listFactors();
+      if (!mfa?.listFactors) {
+        if (!cancelled) setError("MFA is not available for this project.");
+        return;
+      }
+      const { data, error: listError } = await mfa.listFactors();
       if (cancelled) return;
       if (listError) {
         setError(listError.message);
         return;
       }
-
-      // Prefer an already-enrolled TOTP factor if present.
       const existing = data?.totp?.[0];
       if (existing?.id) setFactorId(existing.id);
     })();
@@ -51,15 +55,19 @@ export default function Mfa() {
     setError(null);
     setBusy(true);
     try {
-      const { data, error: enrollError } = await supabase.auth.mfa.enroll({ factorType: "totp" });
+      const mfa = (supabase.auth as { mfa?: { enroll?: (opts: { factorType: string }) => Promise<{ data?: { id: string; totp?: { qr_code: string; secret: string } }; error?: { message: string } }> } }).mfa;
+      if (!mfa?.enroll) {
+        setError("MFA is not available for this project.");
+        return;
+      }
+      const { data, error: enrollError } = await mfa.enroll({ factorType: "totp" });
       if (enrollError) {
         setError(enrollError.message);
         return;
       }
-
-      setFactorId(data.id);
-      setQrCode(data.totp.qr_code);
-      setSecret(data.totp.secret);
+      if (data?.id) setFactorId(data.id);
+      if (data?.totp?.qr_code) setQrCode(data.totp.qr_code);
+      if (data?.totp?.secret) setSecret(data.totp.secret);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to enroll 2FA.");
     } finally {
@@ -72,26 +80,28 @@ export default function Mfa() {
       setError("No 2FA factor found. Enroll first.");
       return;
     }
-
+    const mfa = (supabase.auth as { mfa?: { challenge?: (opts: { factorId: string }) => Promise<{ data?: { id: string }; error?: { message: string } }>; verify?: (opts: { factorId: string; challengeId: string; code: string }) => Promise<{ error?: { message: string } }> } }).mfa;
+    if (!mfa?.challenge || !mfa?.verify) {
+      setError("MFA verify is not available.");
+      return;
+    }
     setError(null);
     setBusy(true);
     try {
-      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+      const { data: challengeData, error: challengeError } = await mfa.challenge({ factorId });
       if (challengeError) {
         setError(challengeError.message);
         return;
       }
-
-      const { error: verifyError } = await supabase.auth.mfa.verify({
+      const { error: verifyError } = await mfa.verify({
         factorId,
-        challengeId: challengeData.id,
+        challengeId: challengeData?.id ?? "",
         code,
       });
       if (verifyError) {
         setError("Invalid code. Try again.");
         return;
       }
-
       if (user) setMfaDeadlineFromNow(user.id);
       navigate(from, { replace: true });
     } catch (err) {
@@ -160,13 +170,23 @@ export default function Mfa() {
               Verify
             </Button>
           </div>
-          <div className="text-center">
+          <div className="flex flex-col items-center gap-2 text-center">
             <button
               type="button"
               className="text-sm text-muted-foreground hover:text-foreground underline"
               onClick={() => navigate(from)}
             >
               Back to app
+            </button>
+            <button
+              type="button"
+              className="text-sm text-muted-foreground hover:text-destructive underline flex items-center gap-1"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate("/login", { replace: true });
+              }}
+            >
+              <LogOut className="h-3 w-3" /> Sign out and use login
             </button>
           </div>
         </CardContent>

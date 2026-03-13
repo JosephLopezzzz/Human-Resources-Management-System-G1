@@ -35,9 +35,10 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AuthProvider>
-        <BrowserRouter>
-          <InactivityLogout />
+      <BrowserRouter>
+        <ErrorBoundary>
+          <AuthProvider>
+            <InactivityLogout />
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/mfa" element={<Mfa />} />
@@ -72,8 +73,9 @@ const App = () => (
 
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+          </AuthProvider>
+        </ErrorBoundary>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

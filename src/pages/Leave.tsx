@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, RefreshCw } from "lucide-react";
 import { useLeaveBalances, useLeaveMutations, useLeaveRequests, useLeaveTypes } from "@/hooks/useLeave";
 import { useAuth } from "@/auth/useAuth";
 import { getCanonicalRole, canApproveLeave } from "@/auth/roles";
@@ -34,7 +34,7 @@ const Leave = () => {
   const isApprover = canApproveLeave(role);
 
   const { data: types = [] } = useLeaveTypes();
-  const { data: requests = [], isLoading: loadingRequests, error: requestsError } = useLeaveRequests();
+  const { data: requests = [], isLoading: loadingRequests, error: requestsError, refetch: refetchRequests } = useLeaveRequests();
   const { data: balances = [], isLoading: loadingBalances, error: balancesError } = useLeaveBalances();
   const { createRequest, creating, updateStatus, updating } = useLeaveMutations();
 
@@ -229,8 +229,12 @@ const Leave = () => {
           <Card>
             <CardContent className="pt-4">
               {requestsError && (
-                <div className="text-sm text-destructive mb-4">
-                  Failed to load leave requests.
+                <div className="flex items-center gap-3 mb-4 p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+                  <p className="text-sm text-destructive flex-1">Failed to load leave requests. If you have other tabs open, try closing them and retry.</p>
+                  <Button variant="outline" size="sm" onClick={() => refetchRequests()} disabled={loadingRequests}>
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Retry
+                  </Button>
                 </div>
               )}
 

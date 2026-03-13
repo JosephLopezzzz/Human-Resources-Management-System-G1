@@ -14,20 +14,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const user = session?.user ?? null;
 
   const refreshMfaState = React.useCallback(async (userId: string) => {
-    ensureMfaDeadline(userId);
-    const due = isMfaDue(userId);
-    if (!due) {
+    try {
+      ensureMfaDeadline(userId);
+      const due = isMfaDue(userId);
+      if (!due) {
+        setNeedsMfa(false);
+        return;
+      }
+      const mfa = (supabase.auth as { mfa?: { getAuthenticatorAssuranceLevel?: () => Promise<{ data?: { currentLevel?: string }; error?: unknown }> } }).mfa;
+      if (!mfa?.getAuthenticatorAssuranceLevel) {
+        setNeedsMfa(false);
+        return;
+      }
+      const { data, error } = await mfa.getAuthenticatorAssuranceLevel();
+      if (error) {
+        setNeedsMfa(true);
+        return;
+      }
+      setNeedsMfa(due && data?.currentLevel !== "aal2");
+    } catch {
       setNeedsMfa(false);
-      return;
     }
-
-    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (error) {
-      // If we can't read AAL, fail safe to requiring MFA.
-      setNeedsMfa(true);
-      return;
-    }
-    setNeedsMfa(due && data.currentLevel !== "aal2");
   }, []);
 
   const applySessionRules = React.useCallback(
@@ -60,7 +67,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then(async ({ data }) => {
         if (!isMounted) return;
         setSession(data.session);
-        await applySessionRules(data.session);
+        try {
+          await applySessionRules(data.session);
+        } catch {
+          if (isMounted) setNeedsMfa(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setSession(null);
+        if (isMounted) setNeedsMfa(false);
       })
       .finally(() => {
         if (isMounted) setLoading(false);
@@ -68,14 +83,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       setSession(newSession);
-
       if (event === "SIGNED_IN" && newSession?.user) {
-        // Start a fresh 7-day session window on every sign-in.
         setSessionExpiresAt(newSession.user.id, Date.now() + MS_7_DAYS);
         ensureMfaDeadline(newSession.user.id);
       }
-
-      await applySessionRules(newSession);
+      try {
+        await applySessionRules(newSession);
+      } catch {
+        setNeedsMfa(false);
+      }
     });
 
     return () => {
