@@ -13,6 +13,8 @@ import { useLeaveRequests } from "@/hooks/useLeave";
 import { useAuditLogs } from "@/hooks/useAuditLogs";
 import { usePayroll } from "@/hooks/usePayroll";
 import { formatDistanceToNow } from "date-fns";
+import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 function mapLogToActivity(log: {
   id: string;
@@ -62,6 +64,17 @@ const Dashboard = () => {
   const attendancePct = attendancePctRaw.toFixed(1);
   const recentActivity = auditLogs.slice(0, 5).map(mapLogToActivity);
 
+  const totalEmployees = employees.length || 1;
+  const donutData = [
+    { name: "Present", value: presentCount },
+    { name: "On leave", value: onLeaveCount },
+    {
+      name: "Other",
+      value: Math.max(totalEmployees - presentCount - onLeaveCount, 0),
+    },
+  ];
+  const donutColors = ["#22c55e", "#f97316", "#0f172a"];
+
   return (
     <PageTransition>
       <PageHeader
@@ -80,36 +93,85 @@ const Dashboard = () => {
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold">Workforce snapshot</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2">
-              <StatCard
-                icon={Users}
-                title="Total employees"
-                value={employees.length}
-                change={`${departments.length} departments`}
-                changeType="neutral"
-              />
-              <StatCard
-                icon={Clock}
-                title="Present today"
-                value={presentCount}
-                change={`${attendancePct}% attendance`}
-                changeType="positive"
-                progress={attendancePctRaw}
-              />
-              <StatCard
-                icon={CalendarDays}
-                title="On leave"
-                value={onLeaveCount}
-                change={`${pendingLeaveCount} pending`}
-                changeType="neutral"
-              />
-              <StatCard
-                icon={TrendingUp}
-                title="On probation"
-                value={probationCount}
-                change="employees on probation"
-                changeType="neutral"
-              />
+            <CardContent className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-center">
+              <div className="relative h-48 sm:h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={donutData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius="65%"
+                      outerRadius="100%"
+                      paddingAngle={2}
+                      startAngle={90}
+                      endAngle={-270}
+                      isAnimationActive
+                    >
+                      {donutData.map((entry, index) => (
+                        <Cell key={entry.name} fill={donutColors[index % donutColors.length]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <p className="text-xs text-muted-foreground">Attendance</p>
+                  <p className="text-xl font-semibold">{attendancePct}%</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {presentCount} of {employees.length || 0} present
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/40 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: donutColors[0] }} />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Present today</p>
+                      <p className="text-sm font-semibold">{presentCount}</p>
+                    </div>
+                  </div>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/40 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: donutColors[1] }} />
+                    <div>
+                      <p className="text-xs text-muted-foreground">On leave</p>
+                      <p className="text-sm font-semibold">
+                        {onLeaveCount}{" "}
+                        <span className="text-[11px] text-muted-foreground">({pendingLeaveCount} pending)</span>
+                      </p>
+                    </div>
+                  </div>
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/40 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: donutColors[2] }} />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total employees</p>
+                      <p className="text-sm font-semibold">
+                        {employees.length}{" "}
+                        <span className="text-[11px] text-muted-foreground">
+                          across {departments.length} departments
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/40 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-primary/80" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">On probation</p>
+                      <p className="text-sm font-semibold">{probationCount}</p>
+                    </div>
+                  </div>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
@@ -228,23 +290,37 @@ const Dashboard = () => {
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">Quick stats & actions</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
-                <p className="text-[11px] text-muted-foreground">Pending leave</p>
-                <p className="text-sm font-semibold">{pendingLeaveCount}</p>
+          <CardContent className="space-y-4">
+            <div className="relative overflow-hidden rounded-xl border border-border bg-muted/40 px-4 py-3">
+              <div className="absolute inset-y-0 right-0 w-32 sm:w-40 opacity-80 pointer-events-none">
+                <DotLottieReact
+                  src="https://lottie.host/5de1c2dd-1fa3-4aea-84c0-5a25c5ae8cfe/UOAUceFJGW.lottie"
+                  loop
+                  autoplay
+                />
               </div>
-              <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
-                <p className="text-[11px] text-muted-foreground">On probation</p>
-                <p className="text-sm font-semibold">{probationCount}</p>
-              </div>
-              <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
-                <p className="text-[11px] text-muted-foreground">Present today</p>
-                <p className="text-sm font-semibold">{presentCount}</p>
-              </div>
-              <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
-                <p className="text-[11px] text-muted-foreground">Departments</p>
-                <p className="text-sm font-semibold">{departments.length}</p>
+              <div className="space-y-2 pr-28 sm:pr-40">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Overview
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="text-muted-foreground">Pending leave</p>
+                    <p className="text-sm font-semibold">{pendingLeaveCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">On probation</p>
+                    <p className="text-sm font-semibold">{probationCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Present today</p>
+                    <p className="text-sm font-semibold">{presentCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Departments</p>
+                    <p className="text-sm font-semibold">{departments.length}</p>
+                  </div>
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 pt-1">

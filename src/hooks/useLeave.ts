@@ -19,6 +19,7 @@ const leaveRequestSchema = z.object({
   status: z.enum(["pending", "approved", "rejected"]),
   approver_id: z.string().uuid().nullable(),
   approver_email: z.string().email().nullable(),
+  description: z.string().nullable().optional(),
   leave_types: leaveTypeSchema.optional().nullable(),
 });
 
@@ -97,6 +98,7 @@ export function useLeaveMutations() {
       startDate: string;
       endDate: string;
       days: number;
+      description?: string;
     }) => {
       const { error } = await supabase.from("leave_requests").insert({
         user_id: payload.userId,
@@ -106,6 +108,7 @@ export function useLeaveMutations() {
         end_date: payload.endDate,
         days: payload.days,
         status: "pending",
+        description: payload.description ?? null,
       });
       if (error) throw error;
     },

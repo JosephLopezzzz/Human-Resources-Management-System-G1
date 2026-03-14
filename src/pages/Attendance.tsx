@@ -4,15 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "@/components/StatCard";
-import { Clock, UserCheck, AlertTriangle, Timer, Coffee } from "lucide-react";
+import { Clock, UserCheck, AlertTriangle, Timer, Coffee, Download } from "lucide-react";
 import { useTodayAttendance } from "@/hooks/useAttendance";
 import { useAuth } from "@/auth/useAuth";
 import { format, intervalToDuration, formatDuration } from "date-fns";
 import { useState, useEffect } from "react";
+import { getCanonicalRole } from "@/auth/roles";
 
 const Attendance = () => {
   const { logs, isLoading, error, clockInOut, clocking, startLunch, endLunch, lunching } = useTodayAttendance();
   const { user } = useAuth();
+  const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
+  const isAttendanceAdmin = role === "system_admin";
+
+  const visibleLogs = isAttendanceAdmin || !user ? logs : logs.filter((l) => l.user_id === user.id);
 
   const openLog = user
     ? logs.find((l) => l.user_id === user.id && l.clock_out_at === null)
@@ -81,6 +86,28 @@ const Attendance = () => {
 
   const accumulatedTimeDisplay = formatMs(totalAccumulatedMs);
 
+  function exportCsv() {
+    const rows = visibleLogs.map((row) => ({
+      user: row.user_email,
+      clockIn: row.clock_in_at,
+      lunchStart: row.lunch_start_time ?? "",
+      lunchEnd: row.lunch_end_time ?? "",
+      clockOut: row.clock_out_at ?? "",
+    }));
+    const header = ["User", "Clock In", "Lunch Start", "Lunch End", "Clock Out"];
+    const csv =
+      [header.join(","), ...rows.map((r) => [r.user, r.clockIn, r.lunchStart, r.lunchEnd, r.clockOut].join(","))].join(
+        "\n"
+      );
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `attendance-${todayLabel.replace(/[, ]/g, "_")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div>
       <PageHeader
@@ -89,22 +116,25 @@ const Attendance = () => {
         breadcrumb={<span>Home / Attendance</span>}
         actions={
           <>
-            <Button
-              size="sm"
-              onClick={handleClock}
-              disabled={!user || clocking || isOnLunch}
-            >
+            {isAttendanceAdmin && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mr-2"
+                disabled={visibleLogs.length === 0}
+                onClick={exportCsv}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Export
+              </Button>
+            )}
+            <Button size="sm" onClick={handleClock} disabled={!user || clocking || isOnLunch}>
               <Clock className="h-4 w-4 mr-1" />
               {clocking ? "Saving..." : buttonLabel}
             </Button>
 
             {openLog && !openLog.clock_out_at && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleLunch}
-                disabled={lunching}
-              >
+              <Button size="sm" variant="outline" onClick={handleLunch} disabled={lunching}>
                 <Coffee className="h-4 w-4 mr-1" />
                 {lunching ? "Saving..." : isOnLunch ? "End Lunch" : "Start Lunch"}
               </Button>
@@ -117,28 +147,28 @@ const Attendance = () => {
         <StatCard
           icon={UserCheck}
           title="Present"
-          value={logs.filter((l) => l.clock_in_at).length}
+          value={visibleLogs.filter((l) => l.clock_in_at).length}
           change="Today"
           changeType="neutral"
         />
         <StatCard
           icon={Clock}
           title="Open Sessions"
-          value={logs.filter((l) => !l.clock_out_at).length}
+          value={visibleLogs.filter((l) => !l.clock_out_at).length}
           change="Currently clocked in"
           changeType="neutral"
         />
         <StatCard
           icon={AlertTriangle}
           title="Completed"
-          value={logs.filter((l) => l.clock_out_at).length}
+          value={visibleLogs.filter((l) => l.clock_out_at).length}
           change="Clocked in & out"
           changeType="neutral"
         />
         <StatCard
           icon={Timer}
           title="Entries"
-          value={logs.length}
+          value={visibleLogs.length}
           change="Total records today"
           changeType="neutral"
         />
@@ -180,7 +210,7 @@ const Attendance = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {logs.map((row) => {
+              {visibleLogs.map((row) => {
                 return (
                   <TableRow key={row.id}>
                     <TableCell>

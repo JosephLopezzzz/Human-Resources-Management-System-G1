@@ -21,6 +21,7 @@ import Reports from "./pages/Reports";
 import Performance from "./pages/Performance";
 import AuditLogs from "./pages/AuditLogs";
 import SettingsPage from "./pages/SettingsPage";
+import RoleMatrix from "./pages/RoleMatrix";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Mfa from "./pages/Mfa";
@@ -67,6 +68,9 @@ const App = () => (
                 </Route>
                 <Route element={<RequireRole allowed={ROUTE_ROLES["/settings"]} />}>
                   <Route path="/settings" element={<SettingsPage />} />
+                </Route>
+                <Route element={<RequireRole allowed={ROUTE_ROLES["/role-matrix"]} />}>
+                  <Route path="/role-matrix" element={<RoleMatrix />} />
                 </Route>
               </Route>
             </Route>

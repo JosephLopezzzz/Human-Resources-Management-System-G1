@@ -115,6 +115,7 @@ export type ModuleId =
   | "my_pay"
   | "performance"
   | "audit_logs"
+  | "role_matrix"
   | "settings"
   | "create_user";
 
@@ -132,12 +133,32 @@ const MODULE_VIEW: Record<ModuleId, RoleKey[]> = {
   ],
   employees: ["system_admin", "hr_manager", "hr_officer", "department_manager"],
   departments: ["system_admin", "hr_manager", "hr_officer", "department_manager"],
-  attendance: ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
-  leave: ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
+  // Attendance and Leave are absolute: all roles can access.
+  attendance: [
+    "system_admin",
+    "hr_manager",
+    "hr_officer",
+    "payroll_officer",
+    "finance_manager",
+    "department_manager",
+    "compliance_officer",
+    "employee",
+  ],
+  leave: [
+    "system_admin",
+    "hr_manager",
+    "hr_officer",
+    "payroll_officer",
+    "finance_manager",
+    "department_manager",
+    "compliance_officer",
+    "employee",
+  ],
   payroll: ["system_admin", "hr_manager", "payroll_officer", "finance_manager"],
   my_pay: ROLE_KEYS,
   performance: ["system_admin", "hr_manager", "hr_officer", "department_manager"],
-  audit_logs: ["system_admin", "hr_manager", "compliance_officer"],
+  audit_logs: ["system_admin"],
+  role_matrix: ["system_admin"],
   settings: ["system_admin"],
   create_user: ["system_admin"],
 };
@@ -157,9 +178,11 @@ export function canManageDepartments(role: RoleKey): boolean {
   return ["system_admin", "hr_manager", "hr_officer"].includes(role);
 }
 
-/** Can approve leave requests (all or team) */
+/** Can approve leave requests (all or team).
+ *  Per BLUEPEAK policy this is restricted to the System Administrator.
+ */
 export function canApproveLeave(role: RoleKey): boolean {
-  return ["system_admin", "hr_manager", "hr_officer", "department_manager"].includes(role);
+  return role === "system_admin";
 }
 
 /** Can process/edit payroll (run payroll, compute, payslips) */
@@ -192,9 +215,11 @@ export function canEditSettings(role: RoleKey): boolean {
   return role === "system_admin";
 }
 
-/** Can view audit logs */
+/** Can view audit logs.
+ *  Restricted to System Administrator so only they see full system history.
+ */
 export function canViewAuditLogs(role: RoleKey): boolean {
-  return ["system_admin", "hr_manager", "compliance_officer"].includes(role);
+  return role === "system_admin";
 }
 
 /** Can edit salary structure (limited for hr_officer per spec) */
@@ -212,12 +237,32 @@ export const ROUTE_ROLES: Record<string, RoleKey[]> = {
   "/": ROLE_KEYS,
   "/employees": ["system_admin", "hr_manager", "hr_officer", "department_manager"],
   "/departments": ["system_admin", "hr_manager", "hr_officer", "department_manager"],
-  "/attendance": ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
-  "/leave": ["system_admin", "hr_manager", "hr_officer", "department_manager", "employee"],
+  // Route guards mirror MODULE_VIEW: everyone can reach Attendance & Leave.
+  "/attendance": [
+    "system_admin",
+    "hr_manager",
+    "hr_officer",
+    "payroll_officer",
+    "finance_manager",
+    "department_manager",
+    "compliance_officer",
+    "employee",
+  ],
+  "/leave": [
+    "system_admin",
+    "hr_manager",
+    "hr_officer",
+    "payroll_officer",
+    "finance_manager",
+    "department_manager",
+    "compliance_officer",
+    "employee",
+  ],
   "/payroll": ["system_admin", "hr_manager", "payroll_officer", "finance_manager"],
   "/my-pay": ROLE_KEYS,
   "/performance": ["system_admin", "hr_manager", "hr_officer", "department_manager"],
-  "/audit-logs": ["system_admin", "hr_manager", "compliance_officer"],
+  "/audit-logs": ["system_admin"],
+  "/role-matrix": ["system_admin"],
   "/settings": ["system_admin"],
   "/admin/users/new": ["system_admin"],
   "/admin/create-admin": ["system_admin"],

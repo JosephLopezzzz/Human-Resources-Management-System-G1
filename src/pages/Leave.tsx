@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, RefreshCw } from "lucide-react";
 import { useLeaveBalances, useLeaveMutations, useLeaveRequests, useLeaveTypes } from "@/hooks/useLeave";
 import { useAuth } from "@/auth/useAuth";
-import { getCanonicalRole, canApproveLeave } from "@/auth/roles";
+import { getCanonicalRole, canApproveLeave, isSystemAdmin } from "@/auth/roles";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -19,11 +19,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { differenceInCalendarDays } from "date-fns";
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 
 const createLeaveSchema = z.object({
   leave_type_id: z.string().uuid("Select a leave type"),
   start_date: z.string().min(1, "Start date is required"),
   end_date: z.string().min(1, "End date is required"),
+  description: z
+    .string()
+    .min(5, "Please provide a short description")
+    .max(500, "Description is too long"),
 });
 
 type CreateLeaveValues = z.infer<typeof createLeaveSchema>;
@@ -32,6 +37,7 @@ const Leave = () => {
   const { user } = useAuth();
   const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
   const isApprover = canApproveLeave(role);
+  const canExport = isApprover || isSystemAdmin(role);
 
   const { data: types = [] } = useLeaveTypes();
   const { data: requests = [], isLoading: loadingRequests, error: requestsError, refetch: refetchRequests } = useLeaveRequests();
@@ -48,6 +54,7 @@ const Leave = () => {
       leave_type_id: "",
       start_date: "",
       end_date: "",
+      description: "",
     },
   });
 
@@ -66,6 +73,7 @@ const Leave = () => {
         startDate: values.start_date,
         endDate: values.end_date,
         days,
+        description: values.description,
       });
 
       toast({
@@ -129,19 +137,61 @@ const Leave = () => {
         breadcrumb={<span>Home / Leave</span>}
         actions={
           user && (
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  New Request
+            <>
+              {canExport && filteredRequests.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mr-2"
+                  onClick={() => {
+                    const header = [
+                      "ID",
+                      "Employee",
+                      "Type",
+                      "From",
+                      "To",
+                      "Days",
+                      "Description",
+                      "Approver",
+                      "Status",
+                    ];
+                    const rows = filteredRequests.map((lr) => [
+                      lr.id,
+                      lr.user_email ?? "",
+                      lr.leave_types?.name ?? "",
+                      lr.start_date,
+                      lr.end_date,
+                      String(lr.days),
+                      lr.description ?? "",
+                      lr.approver_email ?? "",
+                      lr.status,
+                    ]);
+                    const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+                    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "leave-requests.csv";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  Export
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>New Leave Request</DialogTitle>
-                </DialogHeader>
-                <Form {...form}>
-                  <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+              )}
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    New Request
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>New Leave Request</DialogTitle>
+                  </DialogHeader>
+                  <Form {...form}>
+                    <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
                     <FormField
                       control={form.control}
                       name="leave_type_id"
@@ -199,22 +249,41 @@ const Leave = () => {
                       />
                     </div>
 
-                    <DialogFooter>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={creating}>
-                        {creating ? "Submitting..." : "Submit"}
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Reason / description</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Briefly explain the reason for this leave..."
+                              rows={3}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                      <DialogFooter>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={creating}>
+                          {creating ? "Submitting..." : "Submit"}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </>
           )
         }
       />
@@ -275,6 +344,7 @@ const Leave = () => {
                     <TableHead>From</TableHead>
                     <TableHead>To</TableHead>
                     <TableHead className="text-center">Days</TableHead>
+                    <TableHead>Description</TableHead>
                     <TableHead>Approver</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead></TableHead>
@@ -284,7 +354,7 @@ const Leave = () => {
                   {loadingRequests
                     ? Array.from({ length: 6 }).map((_, i) => (
                         <TableRow key={i}>
-                          <TableCell colSpan={9}>
+                          <TableCell colSpan={10}>
                             <Skeleton className="h-6 w-full" />
                           </TableCell>
                         </TableRow>
@@ -293,7 +363,7 @@ const Leave = () => {
                       ? (
                         <TableRow>
                           <TableCell
-                            colSpan={9}
+                            colSpan={10}
                             className="py-6 text-center text-sm text-muted-foreground"
                           >
                             No leave requests found.
@@ -319,6 +389,9 @@ const Leave = () => {
                       </TableCell>
                       <TableCell className="text-sm text-center">
                         {lr.days}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-xs">
+                        {lr.description ?? "—"}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {lr.approver_email ?? "—"}
