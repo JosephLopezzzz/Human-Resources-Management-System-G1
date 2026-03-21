@@ -42,6 +42,8 @@ vi.mock("@/hooks/usePayroll", () => ({
     lockRun: vi.fn(),
     locking: false,
   }),
+  usePayrollRuns: () => ({ data: [], isLoading: false, error: null }),
+  usePayrollItemsForRun: () => ({ data: [], isLoading: false, error: null }),
 }));
 
 import Employees from "@/pages/Employees";

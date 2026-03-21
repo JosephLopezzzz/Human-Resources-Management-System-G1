@@ -34,31 +34,37 @@ ALTER TABLE public.payroll_items ENABLE ROW LEVEL SECURITY;
 
 -- 4. Drop old policies (ignore errors if they don't exist)
 DROP POLICY IF EXISTS "payroll_runs_select_authenticated" ON public.payroll_runs;
+DROP POLICY IF EXISTS "payroll_runs_insert_authenticated" ON public.payroll_runs;
+DROP POLICY IF EXISTS "payroll_runs_update_authenticated" ON public.payroll_runs;
 DROP POLICY IF EXISTS "payroll_runs_modify_admin_hr_only" ON public.payroll_runs;
 DROP POLICY IF EXISTS "payroll_items_select_authenticated" ON public.payroll_items;
+DROP POLICY IF EXISTS "payroll_items_insert_authenticated" ON public.payroll_items;
+DROP POLICY IF EXISTS "payroll_items_update_authenticated" ON public.payroll_items;
 DROP POLICY IF EXISTS "payroll_items_select_admin_hr_all" ON public.payroll_items;
 DROP POLICY IF EXISTS "payroll_items_select_self_limited" ON public.payroll_items;
 DROP POLICY IF EXISTS "payroll_items_modify_admin_hr_only" ON public.payroll_items;
 
--- 5. Allow all authenticated users to SELECT
+-- 5. Payroll Runs: Everyone authenticated can see the run list, but only admins/HR/payroll can modify.
 CREATE POLICY "payroll_runs_select_authenticated"
 ON public.payroll_runs FOR SELECT TO authenticated USING (true);
 
-CREATE POLICY "payroll_items_select_authenticated"
-ON public.payroll_items FOR SELECT TO authenticated USING (true);
+CREATE POLICY "payroll_runs_modify_authorized"
+ON public.payroll_runs FOR ALL TO authenticated 
+USING (
+  auth.jwt() -> 'user_metadata' ->> 'role' IN ('system_admin', 'admin', 'hr_manager', 'hr', 'payroll_officer', 'payroll')
+);
 
--- 6. Allow authenticated users to INSERT/UPDATE payroll_runs (for Generate Payroll & Lock)
-CREATE POLICY "payroll_runs_insert_authenticated"
-ON public.payroll_runs FOR INSERT TO authenticated WITH CHECK (true);
+-- 6. Payroll Items: Users see their own items. Admins, HR, Payroll, and Finance see all items.
+CREATE POLICY "payroll_items_select_owner_or_authorized"
+ON public.payroll_items FOR SELECT TO authenticated 
+USING (
+  auth.uid() = user_id 
+  OR auth.jwt() -> 'user_metadata' ->> 'role' IN ('system_admin', 'admin', 'hr_manager', 'hr', 'payroll_officer', 'payroll', 'finance_manager')
+);
 
-CREATE POLICY "payroll_runs_update_authenticated"
-ON public.payroll_runs FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-
--- 7. Allow authenticated users to INSERT into payroll_items (for future use)
-CREATE POLICY "payroll_items_insert_authenticated"
-ON public.payroll_items FOR INSERT TO authenticated WITH CHECK (true);
-
-CREATE POLICY "payroll_items_update_authenticated"
-ON public.payroll_items FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-
--- Done. Log out and back in to the app, then open Payroll and click Retry.
+-- 7. Payroll Items Management: Restricted to System Admin and Payroll Officers.
+CREATE POLICY "payroll_items_modify_authorized"
+ON public.payroll_items FOR ALL TO authenticated 
+USING (
+  auth.jwt() -> 'user_metadata' ->> 'role' IN ('system_admin', 'admin', 'payroll_officer', 'payroll')
+);

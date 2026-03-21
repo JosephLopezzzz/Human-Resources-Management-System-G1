@@ -252,8 +252,6 @@ serve(async (req) => {
       return jsonResponse(
         JSON.stringify({
           message: "OTP sent successfully",
-          // Only return OTP in dev mode (when RESEND_API_KEY is missing)
-          otp: Deno.env.get("RESEND_API_KEY") ? undefined : otp,
         }),
         200,
         req,
@@ -341,6 +339,17 @@ serve(async (req) => {
       );
     }
 
+    // --- RBAC & HIERARCHY CHECK ---
+    const callerRoleRaw = (user.user_metadata?.role as string | undefined) ?? "";
+    const callerRole = callerRoleRaw.trim().toLowerCase();
+    const isAdmin = callerRole === "system_admin" || callerRole === "admin";
+    const isHR = callerRole === "hr_manager" || callerRole === "hr";
+
+    if (!isAdmin && !isHR) {
+      return jsonResponse(JSON.stringify({ error: "Forbidden: only admins or HR can create users" }), 403, req);
+    }
+    // ------------------------------
+
     const body = (await req.json().catch(() => null)) as
       | {
           email?: string;
@@ -397,6 +406,20 @@ serve(async (req) => {
       return jsonResponse(JSON.stringify({ error: "Invalid role" }), 400, req);
     }
 
+    // --- HIERARCHY CHECK ---
+    // HR Managers can only assign low-level roles.
+    if (isHR && !isAdmin) {
+      const hrAllowed = ["hr_officer", "department_manager", "compliance_officer", "employee"];
+      if (!hrAllowed.includes(assignedRole)) {
+        return jsonResponse(
+          JSON.stringify({ error: "Forbidden: HR Manager cannot assign this administrative role" }),
+          403,
+          req
+        );
+      }
+    }
+    // -----------------------
+
     const { data, error } = await adminClient.auth.admin.createUser({
       email,
       password,
@@ -430,6 +453,18 @@ serve(async (req) => {
             req,
           );
         }
+
+        // --- PROTECTION: Do not allow updating existing system_admin accounts ---
+        const { data: existingUser } = await adminClient.auth.admin.getUserById(existingId);
+        const existingRole = (existingUser?.user?.user_metadata?.role as string | undefined) ?? "";
+        if (existingRole === "system_admin" || existingRole === "admin") {
+          return jsonResponse(
+            JSON.stringify({ error: "Forbidden: Administrative accounts can only be updated via SQL by a Database Owner" }),
+            403,
+            req
+          );
+        }
+        // ------------------------------------------------------------------------
 
         const { data: updated, error: updateError } = await adminClient.auth.admin.updateUserById(existingId, {
           password,
