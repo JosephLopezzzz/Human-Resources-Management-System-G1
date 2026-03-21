@@ -196,7 +196,8 @@ async function findUserIdByEmail(email: string): Promise<string | null> {
 }
 
 serve(async (req) => {
-  const url = new URL(req.url);
+  try {
+    const url = new URL(req.url);
   const path = normalizePath(url.pathname);
 
   // Handle CORS preflight so the browser can call this function from your app origin
@@ -214,10 +215,8 @@ serve(async (req) => {
     }
 
     // Verify the caller is an authorized admin/hr
-    const {
-      data: { user: caller },
-      error: callerError,
-    } = await adminClient.auth.getUser(token);
+    const { data: callerData, error: callerError } = await adminClient.auth.getUser(token);
+    const caller = callerData?.user;
 
     if (callerError || !caller) {
       return jsonResponse(JSON.stringify({ error: "Unauthorized" }), 401, req);
@@ -322,10 +321,8 @@ serve(async (req) => {
     }
 
     // Verify the caller is an authenticated user using the service client.
-    const {
-      data: { user },
-      error: userError,
-    } = await adminClient.auth.getUser(token);
+    const { data: userData, error: userError } = await adminClient.auth.getUser(token);
+    const user = userData?.user;
 
     if (userError || !user) {
       const detail = userError?.message ?? "No user";
@@ -348,6 +345,21 @@ serve(async (req) => {
     if (!isAdmin && !isHR) {
       return jsonResponse(JSON.stringify({ error: "Forbidden: only admins or HR can create users" }), 403, req);
     }
+
+    // --- ENFORCE MFA FOR SYSTEM ADMINS (Strongly Recommended) ---
+    // Note: This requires the admin to have enrolled in MFA and be logged in with AAL2.
+    // If you wish to make this strict, uncomment the block below.
+    /*
+    const aal = (user.app_metadata?.aal as string | undefined) ?? "aal1";
+    if (isAdmin && aal !== "aal2") {
+      return jsonResponse(
+        JSON.stringify({ error: "Forbidden: MFA required for administrative actions" }),
+        403,
+        req
+      );
+    }
+    */
+    // ------------------------------------------------------------
     // ------------------------------
 
     const body = (await req.json().catch(() => null)) as
@@ -455,8 +467,13 @@ serve(async (req) => {
         }
 
         // --- PROTECTION: Do not allow updating existing system_admin accounts ---
-        const { data: existingUser } = await adminClient.auth.admin.getUserById(existingId);
-        const existingRole = (existingUser?.user?.user_metadata?.role as string | undefined) ?? "";
+        const { data: existingData, error: getError } = await adminClient.auth.admin.getUserById(existingId);
+        
+        if (getError) {
+          console.error("Error fetching existing user:", getError);
+        }
+
+        const existingRole = (existingData?.user?.user_metadata?.role as string | undefined) ?? "";
         if (existingRole === "system_admin" || existingRole === "admin") {
           return jsonResponse(
             JSON.stringify({ error: "Forbidden: Administrative accounts can only be updated via SQL by a Database Owner" }),
@@ -501,7 +518,7 @@ serve(async (req) => {
           name ?? "User",
           username,
           assignedRole,
-          updated.user?.id ?? existingId
+          updated?.user?.id ?? existingId
         );
 
         try {
@@ -511,7 +528,7 @@ serve(async (req) => {
             action: "ADMIN_UPDATE_USER",
             category: "auth",
             entity_type: "User",
-            entity_id: updated.user?.id ?? existingId,
+            entity_id: updated?.user?.id ?? existingId,
             ip_address: ip,
             metadata: {
               role_assigned: assignedRole,
@@ -522,7 +539,7 @@ serve(async (req) => {
           /* Logging failures should not break the main flow. */
         }
 
-        return new Response(JSON.stringify({ user: updated.user, updated: true }), {
+        return new Response(JSON.stringify({ user: updated?.user, updated: true }), {
           status: 200,
           headers: { "Content-Type": "application/json", ...corsHeaders(req) },
         });
@@ -571,5 +588,16 @@ serve(async (req) => {
   }
 
   // Default response for other paths
-  return jsonResponse(JSON.stringify({ error: "Endpoint not found" }), 404, req);
+    return jsonResponse(JSON.stringify({ error: "Endpoint not found" }), 404, req);
+  } catch (err) {
+    console.error("Global Edge Function Error:", err);
+    return jsonResponse(
+      JSON.stringify({ 
+        error: "Internal Server Error", 
+        detail: err instanceof Error ? err.message : String(err) 
+      }), 
+      500, 
+      req
+    );
+  }
 });
