@@ -65,10 +65,10 @@ const App = () => (
                   <Route element={<AppLayout />}>
                     <Route path="/" element={<Dashboard />} />
                     <Route element={<RequireRole allowed={ROUTE_ROLES["/admin/users/new"]} />}>
-                      <Route path="/admin/users/new" element={<AdminCreateUser />} />
+                      <Route path="/admin/users/new" element={<RequireSudo><AdminCreateUser /></RequireSudo>} />
                     </Route>
                     <Route element={<RequireRole allowed={ROUTE_ROLES["/admin/create-admin"]} />}>
-                      <Route path="/admin/create-admin" element={<AdminCreateAdmin />} />
+                      <Route path="/admin/create-admin" element={<RequireSudo><AdminCreateAdmin /></RequireSudo>} />
                     </Route>
                     <Route path="/employees" element={<Employees />} />
                     <Route path="/departments" element={<Departments />} />

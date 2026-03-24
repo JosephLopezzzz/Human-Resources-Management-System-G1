@@ -18,8 +18,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/components/ui/use-toast";
 
 const Payroll = () => {
-  const { run, runLoading, runError, refetchRun, items, itemsLoading, itemsError, generateRun, generating, lockRun, locking } =
-    usePayroll();
+  const { 
+    run, runLoading, runError, refetchRun, 
+    items, itemsLoading, itemsError, 
+    generateRun, generating, 
+    submitRun, submitting,
+    lockRun, locking 
+  } = usePayroll();
   const { data: allRuns = [] } = usePayrollRuns();
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const { data: historyItems = [] } = usePayrollItemsForRun(selectedRunId);
@@ -64,17 +69,34 @@ const Payroll = () => {
     }
   }
 
+  async function onSubmitForReview() {
+    try {
+      if (!user) return;
+      await submitRun(user.id);
+      toast({
+        title: "Submitted for review",
+        description: "Payroll has been sent to Finance for approval.",
+      });
+    } catch (err) {
+      toast({
+        title: "Failed to submit",
+        description: err instanceof Error ? err.message : "Something went wrong.",
+        variant: "destructive",
+      });
+    }
+  }
+
   async function onLock() {
     try {
       await lockRun();
       toast({
-        title: "Payroll locked",
-        description: "Current payroll run has been locked.",
+        title: "Payroll approved & locked",
+        description: "The payroll run has been finalized.",
       });
     } catch (err) {
       toast({
-        title: "Failed to lock payroll",
-        description: err instanceof Error ? err.message : "Something went wrong.",
+        title: "Approval denied",
+        description: err instanceof Error ? err.message : "Possible Maker-Checker violation: You cannot approve your own submission.",
         variant: "destructive",
       });
     }
@@ -89,23 +111,48 @@ const Payroll = () => {
         actions={
           canManage && (
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onLock}
-                disabled={!run || run.status === "locked" || locking}
-              >
-                <Lock className="h-4 w-4 mr-1" />
-                {locking ? "Locking..." : run?.status === "locked" ? "Locked" : "Lock Payroll"}
-              </Button>
-              <Button
-                size="sm"
-                onClick={onGenerate}
-                disabled={generating}
-              >
-                <FileText className="h-4 w-4 mr-1" />
-                {generating ? "Generating..." : "Generate Payroll"}
-              </Button>
+              {run?.status === "draft" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onSubmitForReview}
+                  disabled={submitting || generating || items.length === 0}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-1 ${submitting ? "animate-spin" : ""}`} />
+                  {submitting ? "Submitting..." : "Submit for Review"}
+                </Button>
+              )}
+
+              {run?.status === "review_pending" && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={onLock}
+                  disabled={locking || user?.id === run.submitted_by_id}
+                  className="bg-success hover:bg-success/90"
+                >
+                  <Lock className="h-4 w-4 mr-1" />
+                  {locking ? "Approving..." : user?.id === run.submitted_by_id ? "Waiting for Checker" : "Approve & Seal"}
+                </Button>
+              )}
+
+              {run?.status === "locked" && (
+                <Button variant="outline" size="sm" disabled>
+                  <Lock className="h-4 w-4 mr-1" />
+                  Locked
+                </Button>
+              )}
+
+              {(!run || run.status === "draft") && (
+                <Button
+                  size="sm"
+                  onClick={onGenerate}
+                  disabled={generating || (run && run.status !== "draft")}
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  {generating ? "Generating..." : "Generate Payroll"}
+                </Button>
+              )}
             </>
           )
         }
@@ -144,9 +191,9 @@ const Payroll = () => {
         <StatCard
           icon={Lock}
           title="Status"
-          value={run?.status === "locked" ? "Locked" : "Unlocked"}
-          change={run?.status === "locked" ? "Payroll locked" : "Ready for processing"}
-          changeType={run?.status === "locked" ? "neutral" : "neutral"}
+          value={run?.status === "locked" ? "Locked" : run?.status === "review_pending" ? "Pending" : "Draft"}
+          change={run?.status === "locked" ? "Payroll finalized" : run?.status === "review_pending" ? "Awaiting approval" : "Ready for review"}
+          changeType={run?.status === "review_pending" ? "negative" : "neutral"}
         />
       </div>
 

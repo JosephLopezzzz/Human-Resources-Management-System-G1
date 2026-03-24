@@ -13,6 +13,7 @@ import { useState, useEffect } from "react";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useDepartments } from "@/hooks/useDepartments";
 import { useAuth } from "@/auth/useAuth";
+import { useAudit } from "@/hooks/useAudit";
 import { getCanonicalRole, canManageEmployees } from "@/auth/roles";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -41,6 +42,7 @@ const Employees = () => {
   const { employees, isLoading, error, createEmployee, creating } = useEmployees();
   const { departments } = useDepartments();
   const { user } = useAuth();
+  const { logEvent } = useAudit();
   const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
   const canManage = canManageEmployees(role);
 
@@ -119,6 +121,27 @@ const Employees = () => {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
 
   function handleExport() {
+    const count = filtered.length;
+    
+    // Audit Logging for Data Export
+    if (count > 50) {
+      logEvent(
+        `DLP_MASS_EXPORT: High-volume data export attempted (${count} records)`,
+        "system",
+        "EMPLOYEE_EXPORT",
+        undefined,
+        { record_count: count, severity: "HIGH" }
+      );
+    } else {
+      logEvent(
+        `DATA_EXPORT: Exported ${count} employee records`,
+        "employee",
+        "EMPLOYEE_EXPORT",
+        undefined,
+        { record_count: count, severity: "LOW" }
+      );
+    }
+
     const headers = ["Employee ID", "First Name", "Last Name", "Email", "Department", "Position", "Status", "Join Date", "Salary"];
     const rows = filtered.map((e) => [
       e.employee_code,

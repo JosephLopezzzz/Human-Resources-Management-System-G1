@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 
-export type PayrollRunStatus = "draft" | "processing" | "locked";
+export type PayrollRunStatus = "draft" | "processing" | "review_pending" | "locked";
 export type PayrollItemStatus = "approved" | "pending" | "draft";
 
 export type PayrollRun = {
@@ -10,6 +10,8 @@ export type PayrollRun = {
   period_start: string;
   period_end: string;
   status: PayrollRunStatus;
+  submitted_by_id?: string | null;
+  submitted_at?: string | null;
 };
 
 export type PayrollItem = {
@@ -176,6 +178,25 @@ export function usePayroll() {
     },
   });
 
+  const submitMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const run = runsQuery.data;
+      if (!run) return;
+      const { error } = await supabase
+        .from("payroll_runs")
+        .update({ 
+          status: "review_pending",
+          submitted_by_id: userId,
+          submitted_at: new Date().toISOString()
+        })
+        .eq("id", run.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payroll_runs", "current"] });
+    },
+  });
+
   const lockMutation = useMutation({
     mutationFn: async () => {
       const run = runsQuery.data;
@@ -201,6 +222,8 @@ export function usePayroll() {
     itemsError: itemsQuery.error,
     generateRun: generateMutation.mutateAsync,
     generating: generateMutation.isPending,
+    submitRun: submitMutation.mutateAsync,
+    submitting: submitMutation.isPending,
     lockRun: lockMutation.mutateAsync,
     locking: lockMutation.isPending,
   };
