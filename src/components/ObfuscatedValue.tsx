@@ -1,12 +1,18 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAudit, AuditCategory } from "@/hooks/useAudit";
 
 interface ObfuscatedValueProps {
   children: React.ReactNode;
   mask?: string;
   className?: string;
   buttonClassName?: string;
+  // Security Auditing
+  auditLabel?: string;
+  category?: AuditCategory;
+  entityId?: string;
+  entityType?: string;
 }
 
 export function ObfuscatedValue({
@@ -14,8 +20,28 @@ export function ObfuscatedValue({
   mask = "••••••••",
   className,
   buttonClassName,
+  auditLabel,
+  category = "system",
+  entityId,
+  entityType = "PII_DATA",
 }: ObfuscatedValueProps) {
   const [isRevealed, setIsRevealed] = useState(false);
+  const { logEvent } = useAudit();
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextState = !isRevealed;
+    setIsRevealed(nextState);
+
+    if (nextState && auditLabel) {
+      logEvent(
+        `REVEAL_SENSITIVE_DATA: ${auditLabel}`,
+        category,
+        entityType,
+        entityId
+      );
+    }
+  };
 
   return (
     <div className={cn("inline-flex items-center gap-2", className)}>
@@ -24,10 +50,7 @@ export function ObfuscatedValue({
       </span>
       <button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsRevealed(!isRevealed);
-        }}
+        onClick={handleToggle}
         className={cn(
           "shrink-0 h-6 w-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground outline-none transition-colors",
           buttonClassName

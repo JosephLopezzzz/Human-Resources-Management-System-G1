@@ -440,7 +440,13 @@ const Employees = () => {
                       {emp.join_date ? format(new Date(emp.join_date), "yyyy-MM-dd") : "—"}
                     </TableCell>
                     <TableCell className="text-sm text-right font-medium">
-                      <ObfuscatedValue className="justify-end w-full">
+                      <ObfuscatedValue 
+                        className="justify-end w-full"
+                        auditLabel={`Salary for ${emp.first_name} ${emp.last_name}`}
+                        category="employee"
+                        entityId={emp.id}
+                        entityType="EMPLOYEE_SALARY"
+                      >
                         {emp.salary_amount
                           .toLocaleString(undefined, {
                             style: "currency",

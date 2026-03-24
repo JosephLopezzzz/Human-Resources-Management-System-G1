@@ -116,7 +116,7 @@ const Payroll = () => {
           icon={PhilippinePeso}
           title="Total Gross"
           value={
-            <ObfuscatedValue>
+            <ObfuscatedValue auditLabel="Total Gross Payroll (Aggregate)" category="payroll">
               {totalGross.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
             </ObfuscatedValue>
           }
@@ -127,7 +127,7 @@ const Payroll = () => {
           icon={PhilippinePeso}
           title="Total Net"
           value={
-            <ObfuscatedValue>
+            <ObfuscatedValue auditLabel="Total Net Payroll (Aggregate)" category="payroll">
               {totalNet.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
             </ObfuscatedValue>
           }
@@ -288,35 +288,65 @@ const Payroll = () => {
                       </p>
                     </TableCell>
                     <TableCell className="text-sm text-right font-mono">
-                      <ObfuscatedValue className="justify-end w-full">
+                      <ObfuscatedValue 
+                        className="justify-end w-full"
+                        auditLabel={`Base Salary for ${pr.user_email}`}
+                        category="payroll"
+                        entityId={pr.id}
+                        entityType="PAYROLL_ITEM"
+                      >
                         {pr.base_salary
                           .toLocaleString(undefined, { style: "currency", currency: "PHP" })
                           .replace(/\$/g, "₱")}
                       </ObfuscatedValue>
                     </TableCell>
                     <TableCell className="text-sm text-right font-mono text-success">
-                      <ObfuscatedValue className="justify-end w-full">
+                      <ObfuscatedValue 
+                        className="justify-end w-full"
+                        auditLabel={`Allowances for ${pr.user_email}`}
+                        category="payroll"
+                        entityId={pr.id}
+                        entityType="PAYROLL_ITEM"
+                      >
                         {pr.allowances
                           .toLocaleString(undefined, { style: "currency", currency: "PHP" })
                           .replace(/\$/g, "₱")}
                       </ObfuscatedValue>
                     </TableCell>
                     <TableCell className="text-sm text-right font-mono text-destructive">
-                      <ObfuscatedValue className="justify-end w-full">
+                      <ObfuscatedValue 
+                        className="justify-end w-full"
+                        auditLabel={`Deductions for ${pr.user_email}`}
+                        category="payroll"
+                        entityId={pr.id}
+                        entityType="PAYROLL_ITEM"
+                      >
                         {pr.deductions
                           .toLocaleString(undefined, { style: "currency", currency: "PHP" })
                           .replace(/\$/g, "₱")}
                       </ObfuscatedValue>
                     </TableCell>
                     <TableCell className="text-sm text-right font-mono text-destructive">
-                      <ObfuscatedValue className="justify-end w-full">
+                      <ObfuscatedValue 
+                        className="justify-end w-full"
+                        auditLabel={`Tax for ${pr.user_email}`}
+                        category="payroll"
+                        entityId={pr.id}
+                        entityType="PAYROLL_ITEM"
+                      >
                         {pr.tax
                           .toLocaleString(undefined, { style: "currency", currency: "PHP" })
                           .replace(/\$/g, "₱")}
                       </ObfuscatedValue>
                     </TableCell>
                     <TableCell className="text-sm text-right font-mono font-semibold">
-                      <ObfuscatedValue className="justify-end w-full">
+                      <ObfuscatedValue 
+                        className="justify-end w-full"
+                        auditLabel={`Net Pay for ${pr.user_email}`}
+                        category="payroll"
+                        entityId={pr.id}
+                        entityType="PAYROLL_ITEM"
+                      >
                         {pr.net_pay
                           .toLocaleString(undefined, { style: "currency", currency: "PHP" })
                           .replace(/\$/g, "₱")}

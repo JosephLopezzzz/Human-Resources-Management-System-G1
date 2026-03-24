@@ -117,19 +117,58 @@ export default function MyPay() {
                       {runItems.map((row) => (
                         <TableRow key={row.id}>
                           <TableCell>
-                            <ObfuscatedValue>{formatCurrency(row.base_salary)}</ObfuscatedValue>
+                            <ObfuscatedValue 
+                              auditLabel="My Base Salary" 
+                              category="payroll"
+                              entityId={row.id}
+                              entityType="PAYROLL_ITEM"
+                            >
+                              {formatCurrency(row.base_salary)}
+                            </ObfuscatedValue>
                           </TableCell>
                           <TableCell className="text-right">
-                            <ObfuscatedValue className="justify-end w-full">{formatCurrency(row.allowances)}</ObfuscatedValue>
+                            <ObfuscatedValue 
+                              className="justify-end w-full" 
+                              auditLabel="My Allowances" 
+                              category="payroll"
+                              entityId={row.id}
+                              entityType="PAYROLL_ITEM"
+                            >
+                              {formatCurrency(row.allowances)}
+                            </ObfuscatedValue>
                           </TableCell>
                           <TableCell className="text-right">
-                            <ObfuscatedValue className="justify-end w-full">{formatCurrency(row.deductions)}</ObfuscatedValue>
+                            <ObfuscatedValue 
+                              className="justify-end w-full" 
+                              auditLabel="My Deductions" 
+                              category="payroll"
+                              entityId={row.id}
+                              entityType="PAYROLL_ITEM"
+                            >
+                              {formatCurrency(row.deductions)}
+                            </ObfuscatedValue>
                           </TableCell>
                           <TableCell className="text-right">
-                            <ObfuscatedValue className="justify-end w-full">{formatCurrency(row.tax)}</ObfuscatedValue>
+                            <ObfuscatedValue 
+                              className="justify-end w-full" 
+                              auditLabel="My Tax" 
+                              category="payroll"
+                              entityId={row.id}
+                              entityType="PAYROLL_ITEM"
+                            >
+                              {formatCurrency(row.tax)}
+                            </ObfuscatedValue>
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            <ObfuscatedValue className="justify-end w-full">{formatCurrency(row.net_pay)}</ObfuscatedValue>
+                            <ObfuscatedValue 
+                              className="justify-end w-full" 
+                              auditLabel="My Net Pay" 
+                              category="payroll"
+                              entityId={row.id}
+                              entityType="PAYROLL_ITEM"
+                            >
+                              {formatCurrency(row.net_pay)}
+                            </ObfuscatedValue>
                           </TableCell>
                           <TableCell><Badge variant="outline">{row.status}</Badge></TableCell>
                         </TableRow>
