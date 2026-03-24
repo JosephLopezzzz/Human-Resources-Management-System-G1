@@ -1,7 +1,7 @@
 import React from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { AuthContext } from "./AuthContext";
-import { useAudit } from "@/hooks/useAudit";
+import { logAudit } from "@/hooks/useAudit";
 import { ensureSessionWindow, isSessionExpired, setSessionExpiresAt } from "./authStorage";
 import type { Session } from "@supabase/supabase-js";
 
@@ -52,7 +52,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (isMounted) setLoading(false);
       });
 
-    const { logEvent } = useAudit();
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       setSession(newSession);
@@ -61,8 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const duration = remember ? MS_7_DAYS : MS_12_HOURS;
         setSessionExpiresAt(newSession.user.id, Date.now() + duration);
 
-        // Audit Log: Sign In
-        logEvent("USER_SIGN_IN", "auth", "USER", newSession.user.id, {
+        // Audit Log: Sign In (Standalone utility to avoid context loop)
+        logAudit(newSession.user, "USER_SIGN_IN", "auth", "USER", newSession.user.id, {
           remember_me: remember,
           duration_ms: duration,
         });

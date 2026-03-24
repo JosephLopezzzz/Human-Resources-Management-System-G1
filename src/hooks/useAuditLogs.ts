@@ -4,13 +4,13 @@ import { supabase } from "@/lib/supabaseClient";
 export type AuditLog = {
   id: string;
   timestamp: string;
-  actor_user_id: string | null;
+  actor_id: string | null;
   actor_email: string | null;
   action: string;
   category: string;
   entity_type: string;
   entity_id: string | null;
-  ip_address: string | null;
+  metadata: any;
 };
 
 export function useAuditLogs(search: string, category: string) {

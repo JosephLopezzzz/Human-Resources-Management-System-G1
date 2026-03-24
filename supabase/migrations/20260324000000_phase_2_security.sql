@@ -1,24 +1,60 @@
--- Phase 2 Security Hardening (2026-03-24)
--- This migration ensures the audit_logs table exists and tightens RLS for payroll/employees.
+-- Phase 2 Security Hardening (2026-03-24) - RECONCILIATION PATCH
+-- This script ensures the audit_logs table matches the app's expectations.
 
--- 1. Create audit_logs table (if missing)
+-- 1. Ensure table exists
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    timestamp timestamptz DEFAULT now(),
-    actor_id uuid DEFAULT auth.uid(),
-    actor_email text,
-    action text NOT NULL,
-    category text NOT NULL,
-    entity_type text NOT NULL,
-    entity_id text,
-    metadata jsonb DEFAULT '{}'::jsonb,
     created_at timestamptz DEFAULT now()
 );
 
--- 2. Enable RLS on audit_logs
+-- 2. Defensive Column Reconciliation
+DO $$ 
+BEGIN 
+    -- actor_id
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_logs' AND column_name='actor_id') THEN
+        ALTER TABLE public.audit_logs ADD COLUMN actor_id uuid DEFAULT auth.uid();
+    END IF;
+
+    -- actor_email
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_logs' AND column_name='actor_email') THEN
+        ALTER TABLE public.audit_logs ADD COLUMN actor_email text;
+    END IF;
+
+    -- action
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_logs' AND column_name='action') THEN
+        ALTER TABLE public.audit_logs ADD COLUMN action text NOT NULL DEFAULT 'unknown_action';
+    END IF;
+
+    -- category
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_logs' AND column_name='category') THEN
+        ALTER TABLE public.audit_logs ADD COLUMN category text NOT NULL DEFAULT 'system';
+    END IF;
+
+    -- entity_type
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_logs' AND column_name='entity_type') THEN
+        ALTER TABLE public.audit_logs ADD COLUMN entity_type text NOT NULL DEFAULT 'general';
+    END IF;
+
+    -- entity_id
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_logs' AND column_name='entity_id') THEN
+        ALTER TABLE public.audit_logs ADD COLUMN entity_id text;
+    END IF;
+
+    -- metadata
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_logs' AND column_name='metadata') THEN
+        ALTER TABLE public.audit_logs ADD COLUMN metadata jsonb DEFAULT '{}'::jsonb;
+    END IF;
+
+    -- timestamp
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='audit_logs' AND column_name='timestamp') THEN
+        ALTER TABLE public.audit_logs ADD COLUMN timestamp timestamptz DEFAULT now();
+    END IF;
+END $$;
+
+-- 3. Enable RLS
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- 3. Audit Logs: Management roles can see all logs.
+-- 4. Audit Logs: Management roles can see all logs.
 DROP POLICY IF EXISTS "audit_logs_select_authorized" ON public.audit_logs;
 CREATE POLICY "audit_logs_select_authorized"
 ON public.audit_logs FOR SELECT TO authenticated
