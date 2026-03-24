@@ -1,7 +1,15 @@
+import { Suspense } from "react";
 import { Outlet, Link } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { AppTopbar } from "./AppTopbar";
 import { useAuth } from "@/auth/useAuth";
+
+const InnerLoader = () => (
+  <div className="flex h-full w-full flex-col items-center justify-center p-8 space-y-4">
+    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+    <p className="text-xs text-muted-foreground font-medium animate-pulse tracking-wide">Loading workspace...</p>
+  </div>
+);
 
 export function AppLayout() {
   const { user, signOut } = useAuth();
@@ -12,7 +20,9 @@ export function AppLayout() {
       <div className="flex flex-col flex-1 overflow-hidden">
         <AppTopbar />
         <main className="flex-1 overflow-y-auto px-6 py-5">
-          <Outlet />
+          <Suspense fallback={<InnerLoader />}>
+            <Outlet />
+          </Suspense>
         </main>
         <footer className="border-t px-6 py-3 text-xs text-muted-foreground flex items-center justify-between">
           <span>&copy; {new Date().getFullYear()} HR Management System</span>

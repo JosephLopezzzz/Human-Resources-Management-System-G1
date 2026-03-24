@@ -5,7 +5,6 @@ export type AuthContextValue = {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  needsMfa: boolean;
   signOut: () => Promise<void>;
 };
 

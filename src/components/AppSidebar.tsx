@@ -81,7 +81,7 @@ export function AppSidebar() {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       className={cn(
-        "flex flex-col h-screen bg-sidebar border-r border-sidebar-border overflow-hidden shrink-0 z-20",
+        "flex flex-col h-screen glass-sidebar overflow-hidden shrink-0 z-20",
         "shadow-sm"
       )}
     >
@@ -139,10 +139,8 @@ export function AppSidebar() {
                 )}
               >
                 {isActive && (
-                  <motion.div
-                    layoutId="sidebar-active-indicator"
-                    className="absolute inset-0 rounded-md bg-sidebar-accent"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  <div
+                    className="absolute inset-0 rounded-md bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/20 shadow-sm transition-all duration-300"
                   />
                 )}
                 <span className="relative z-10 flex items-center gap-3">
@@ -196,17 +194,7 @@ export function AppSidebar() {
             {expanded && <span>Settings</span>}
           </NavLink>
         )}
-        <NavLink
-          to="/mfa"
-          title={!expanded ? "Two-factor auth" : undefined}
-          className={cn(
-            "flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent",
-            !expanded && "justify-center px-0"
-          )}
-        >
-          <Shield className="h-4 w-4 shrink-0" />
-          {expanded && <span>Two-factor auth</span>}
-        </NavLink>
+
         <button
           onClick={onLogout}
           title={!expanded ? "Logout" : undefined}

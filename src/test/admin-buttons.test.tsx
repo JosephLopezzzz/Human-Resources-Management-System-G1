@@ -60,7 +60,6 @@ function renderWithRole(role: string, ui: React.ReactElement) {
       user_metadata: { role },
     } as any,
     loading: false,
-    needsMfa: false,
     signOut: async () => {},
   };
 

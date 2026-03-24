@@ -24,7 +24,7 @@ export function AppTopbar() {
     .join("");
 
   return (
-    <header className="h-14 border-b border-border bg-card flex items-center justify-between gap-4 px-6 shrink-0">
+    <header className="h-14 glass-topbar flex items-center justify-between gap-4 px-6 shrink-0 transition-all duration-300">
       <div className="flex-1 max-w-xl flex items-center">
         <div className="relative flex flex-1 items-center rounded-xl border border-input bg-muted/30 focus-within:bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 transition-all overflow-hidden">
           <Input

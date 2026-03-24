@@ -10,7 +10,6 @@ function renderLogin() {
     session: null,
     user: null,
     loading: false,
-    needsMfa: false,
     signOut: async () => {},
   };
 
@@ -24,20 +23,20 @@ function renderLogin() {
 }
 
 describe("Login form", () => {
-  it("disables Sign in button when email or password is empty", () => {
-    renderLogin();
+  it("disables Sign in button when username or password is empty", () => {
+    const { container } = renderLogin();
     const submit = screen.getByRole("button", { name: /sign in/i });
     expect(submit).toBeDisabled();
   });
 
-  it("enables Sign in button when email and password are filled", () => {
-    renderLogin();
+  it("enables Sign in button when username and password are filled", () => {
+    const { container } = renderLogin();
 
-    const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/password/i);
+    const usernameInput = container.querySelector('#username') as HTMLInputElement;
+    const passwordInput = container.querySelector('#password') as HTMLInputElement;
     const submit = screen.getByRole("button", { name: /sign in/i });
 
-    fireEvent.change(emailInput, { target: { value: "user@example.com" } });
+    fireEvent.change(usernameInput, { target: { value: "user1" } });
     fireEvent.change(passwordInput, { target: { value: "password123" } });
 
     expect(submit).not.toBeDisabled();

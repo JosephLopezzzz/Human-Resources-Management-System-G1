@@ -22,7 +22,7 @@ type LocationState = { from?: { pathname?: string } } | null;
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, needsMfa } = useAuth();
+  const { user } = useAuth();
 
   const from = ((location.state as LocationState)?.from?.pathname as string | undefined) ?? "/";
 
@@ -35,15 +35,12 @@ export default function Login() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [showOTPModal, setShowOTPModal] = React.useState(false);
   const [otpEmail, setOtpEmail] = React.useState("");
+  const [rememberMe, setRememberMe] = React.useState(false);
 
   React.useEffect(() => {
     if (!user) return;
-    if (needsMfa) {
-      navigate("/mfa", { replace: true, state: { from: { pathname: from } } });
-    } else {
-      navigate(from, { replace: true });
-    }
-  }, [from, navigate, needsMfa, user]);
+    navigate(from, { replace: true });
+  }, [from, navigate, user]);
 
   React.useEffect(() => {
     const id = window.setInterval(() => {
@@ -114,10 +111,17 @@ export default function Login() {
         return;
       }
 
+      // Record rememberMe choice for AuthProvider
+      if (rememberMe) {
+        localStorage.setItem("hrms.rememberMe", "true");
+      } else {
+        localStorage.removeItem("hrms.rememberMe"); // clears it out if unselected
+      }
+
       // Successful login: reset anti brute-force counter for this user.
       resetLoginFailures(login);
       setLockRemainingMs(0);
-      // AuthProvider will redirect (including to /mfa if due).
+      // AuthProvider will redirect.
     } catch (err) {
       registerLoginFailure(username);
       setLockRemainingMs(username ? getLockRemainingMs(username) : 0);
@@ -351,6 +355,20 @@ export default function Login() {
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2 py-1">
+                      <input
+                        type="checkbox"
+                        id="rememberMe"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary bg-background disabled:opacity-50"
+                        disabled={submitting}
+                      />
+                      <Label htmlFor="rememberMe" className="text-sm font-medium cursor-pointer">
+                        Remember me for 7 days
+                      </Label>
                     </div>
 
                     {locked && (

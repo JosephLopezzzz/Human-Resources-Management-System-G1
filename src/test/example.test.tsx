@@ -10,7 +10,6 @@ function renderWithAuth(ctx: Partial<AuthContextValue>) {
     session: null,
     user: null,
     loading: false,
-    needsMfa: false,
     signOut: async () => {},
     ...ctx,
   };

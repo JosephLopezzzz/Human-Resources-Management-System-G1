@@ -45,15 +45,15 @@
 
     --radius: 0.5rem;
 
-    --sidebar-background: 220 25% 12%;
-    --sidebar-foreground: 220 14% 80%;
-    --sidebar-primary: 220 72% 60%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 25% 10%;
+    --sidebar-primary: 220 72% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 18%;
-    --sidebar-accent-foreground: 220 14% 92%;
-    --sidebar-border: 220 20% 20%;
+    --sidebar-accent: 220 14% 90%;
+    --sidebar-accent-foreground: 220 25% 10%;
+    --sidebar-border: 220 14% 89%;
     --sidebar-ring: 220 72% 50%;
-    --sidebar-muted: 220 14% 40%;
+    --sidebar-muted: 220 10% 46%;
 
     --chart-1: 220 72% 50%;
     --chart-2: 142 64% 38%;
@@ -83,14 +83,14 @@
     --input: 220 20% 20%;
     --ring: 220 72% 60%;
     --sidebar-background: 220 30% 6%;
-    --sidebar-foreground: 220 14% 80%;
+    --sidebar-foreground: 220 14% 92%;
     --sidebar-primary: 220 72% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 25% 12%;
+    --sidebar-accent: 220 25% 15%;
     --sidebar-accent-foreground: 220 14% 92%;
     --sidebar-border: 220 25% 14%;
     --sidebar-ring: 220 72% 60%;
-    --sidebar-muted: 220 14% 40%;
+    --sidebar-muted: 220 10% 55%;
   }
 }
 
@@ -112,8 +112,148 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply text-foreground font-sans antialiased;
     font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    background: linear-gradient(135deg, #e2e8f0 0%, #f8fafc 100%);
+    background-attachment: fixed;
+  }
+
+  .dark body {
+    background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #172554 100%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+
+  code, pre {
+    font-family: 'IBM Plex Mono', monospace;
+  }
+}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+@layer base {
+  :root {
+    --background: 220 20% 97%;
+    --foreground: 220 25% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 10%;
+
+    --primary: 220 72% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 92%;
+    --secondary-foreground: 220 25% 20%;
+
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 10% 46%;
+
+    --accent: 220 14% 92%;
+    --accent-foreground: 220 25% 20%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 64% 38%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --info: 200 80% 50%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 220 14% 89%;
+    --input: 220 14% 89%;
+    --ring: 220 72% 50%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 25% 10%;
+    --sidebar-primary: 220 72% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 90%;
+    --sidebar-accent-foreground: 220 25% 10%;
+    --sidebar-border: 220 14% 89%;
+    --sidebar-ring: 220 72% 50%;
+    --sidebar-muted: 220 10% 46%;
+
+    --chart-1: 220 72% 50%;
+    --chart-2: 142 64% 38%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 280 60% 50%;
+    --chart-5: 0 72% 51%;
+  }
+
+  .dark {
+    --background: 220 25% 8%;
+    --foreground: 220 14% 92%;
+    --card: 220 25% 12%;
+    --card-foreground: 220 14% 92%;
+    --popover: 220 25% 12%;
+    --popover-foreground: 220 14% 92%;
+    --primary: 220 72% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 20% 18%;
+    --secondary-foreground: 220 14% 92%;
+    --muted: 220 20% 15%;
+    --muted-foreground: 220 10% 55%;
+    --accent: 220 20% 18%;
+    --accent-foreground: 220 14% 92%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 20% 20%;
+    --input: 220 20% 20%;
+    --ring: 220 72% 60%;
+    --sidebar-background: 220 30% 6%;
+    --sidebar-foreground: 220 14% 92%;
+    --sidebar-primary: 220 72% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 25% 15%;
+    --sidebar-accent-foreground: 220 14% 92%;
+    --sidebar-border: 220 25% 14%;
+    --sidebar-ring: 220 72% 60%;
+    --sidebar-muted: 220 10% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  @media print {
+    aside,
+    header,
+    .no-print {
+      display: none !important;
+    }
+    main {
+      margin: 0 !important;
+      padding: 1rem !important;
+    }
+  }
+
+  body {
+    @apply text-foreground font-sans antialiased;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    background: linear-gradient(135deg, #e2e8f0 0%, #f8fafc 100%);
+    background-attachment: fixed;
+  }
+
+  .dark body {
+    background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #172554 100%);
+    background-attachment: fixed;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -128,5 +268,59 @@
 @layer utilities {
   .stat-card-gradient {
     @apply bg-gradient-to-br from-card to-muted/30;
+  }
+  
+  /* Advanced Liquid Glassmorphism */
+  .liquid-glass {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 0 10px 5px rgba(255, 255, 255, 0.3);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .dark .liquid-glass {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.02),
+      inset 0 0 10px 2px rgba(255, 255, 255, 0.05);
+  }
+
+  .liquid-glass::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .liquid-glass::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 1px; height: 100%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), transparent, rgba(255, 255, 255, 0.3));
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .dark .liquid-glass::before, .dark .liquid-glass::after {
+    opacity: 0.25;
+  }
+
+  /* Map old glass classes to liquid glass */
+  .glass { @apply liquid-glass bg-white/20 dark:bg-slate-900/40; }
+  .glass-card { @apply liquid-glass rounded-xl bg-white/30 dark:bg-slate-900/40; }
+  .glass-sidebar { @apply liquid-glass border-r border-white/20 dark:border-white/5 shadow-2xl bg-white/30 dark:bg-slate-900/40; }
+  .glass-topbar { @apply liquid-glass border-b-0 shadow-md sticky top-0 z-10 rounded-b-xl mx-2 mt-0 bg-white/30 dark:bg-slate-900/40; }
+  .glass-btn { 
+    @apply relative overflow-hidden backdrop-blur-md border border-white/40 dark:border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] transition-all hover:brightness-110 active:scale-95; 
   }
 }
