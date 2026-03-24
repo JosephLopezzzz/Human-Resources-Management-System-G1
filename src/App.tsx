@@ -11,6 +11,7 @@ import { RequireRole } from "@/auth/RequireRole";
 import { ROUTE_ROLES } from "@/auth/roles";
 import { InactivityLogout } from "@/auth/InactivityLogout";
 import { Suspense, lazy } from "react";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Employees = lazy(() => import("./pages/Employees"));
@@ -40,11 +41,12 @@ const PageLoader = () => (
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
+  <ThemeProvider defaultTheme="system" storageKey="bluepeak-ui-theme">
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
         <ErrorBoundary>
           <AuthProvider>
             <InactivityLogout />
@@ -91,6 +93,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;

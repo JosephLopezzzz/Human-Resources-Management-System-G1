@@ -21,6 +21,7 @@ import { useState, useCallback } from "react";
 import { useAuth } from "@/auth/useAuth";
 import { getCanonicalRole, canViewModule, isSystemAdmin, type RoleKey } from "@/auth/roles";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "./theme-provider";
 
 const navItems: {
   to: string;
@@ -58,6 +59,10 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { theme } = useTheme();
+  
+  const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const logoSrc = isDark ? "/favicon1/bluepeak-favicon.jpg" : "/favicon1/BLuepeak-favicon-lightmode.png";
   const rawRole = (user?.user_metadata?.role as string | undefined) ?? "employee";
   const role = getCanonicalRole(rawRole) as RoleKey;
   const visibleNavItems = navItems.filter((item) => canViewModule(role, item.module));
@@ -88,7 +93,7 @@ export function AppSidebar() {
       <div className="flex items-center gap-3 px-3 h-16 border-b border-sidebar-border shrink-0">
         <div className="h-10 w-10 rounded-xl bg-sidebar-accent border border-sidebar-border flex items-center justify-center overflow-hidden shrink-0">
           <img
-            src="/favicon1/bluepeak-favicon.jpg"
+            src={logoSrc}
             alt="BLUEPEAK"
             className="h-full w-full object-contain"
           />

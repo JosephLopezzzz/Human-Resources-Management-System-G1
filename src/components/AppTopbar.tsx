@@ -7,6 +7,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { useAuth } from "@/auth/useAuth";
 import { useAuditLogs } from "@/hooks/useAuditLogs";
 import { formatDistanceToNow } from "date-fns";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function AppTopbar() {
   const { user } = useAuth();
@@ -40,7 +41,8 @@ export function AppTopbar() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-5 shrink-0 pr-2">
+        <ThemeToggle />
         <Popover>
           <PopoverTrigger asChild>
             <button
