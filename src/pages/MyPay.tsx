@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/auth/useAuth";
 import { PageHeader } from "@/components/PageHeader";
+import { ObfuscatedValue } from "@/components/ObfuscatedValue";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -115,11 +116,21 @@ export default function MyPay() {
                     <TableBody>
                       {runItems.map((row) => (
                         <TableRow key={row.id}>
-                          <TableCell>{formatCurrency(row.base_salary)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(row.allowances)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(row.deductions)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(row.tax)}</TableCell>
-                          <TableCell className="text-right font-medium">{formatCurrency(row.net_pay)}</TableCell>
+                          <TableCell>
+                            <ObfuscatedValue>{formatCurrency(row.base_salary)}</ObfuscatedValue>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <ObfuscatedValue className="justify-end w-full">{formatCurrency(row.allowances)}</ObfuscatedValue>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <ObfuscatedValue className="justify-end w-full">{formatCurrency(row.deductions)}</ObfuscatedValue>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <ObfuscatedValue className="justify-end w-full">{formatCurrency(row.tax)}</ObfuscatedValue>
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            <ObfuscatedValue className="justify-end w-full">{formatCurrency(row.net_pay)}</ObfuscatedValue>
+                          </TableCell>
                           <TableCell><Badge variant="outline">{row.status}</Badge></TableCell>
                         </TableRow>
                       ))}

@@ -1,7 +1,7 @@
 import { StatCard } from "@/components/StatCard";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Users, Building2, Clock, CalendarDays, DollarSign, TrendingUp } from "lucide-react";
+import { Users, Building2, Clock, CalendarDays, PhilippinePeso, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageTransition, AnimatedList } from "@/components/motion";
@@ -186,7 +186,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
               <StatCard
-                icon={DollarSign}
+                icon={PhilippinePeso}
                 title="Net payroll (current)"
                 value={totalNetPay > 0 ? `₱${(totalNetPay / 1_000_000).toFixed(2)}M` : "—"}
                 change={payrollRun?.status === "locked" ? "Locked" : "Current period"}

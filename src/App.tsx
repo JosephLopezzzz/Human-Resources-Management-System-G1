@@ -10,6 +10,7 @@ import { RequireAuth } from "@/auth/RequireAuth";
 import { RequireRole } from "@/auth/RequireRole";
 import { ROUTE_ROLES } from "@/auth/roles";
 import { InactivityLogout } from "@/auth/InactivityLogout";
+import { RequireSudo } from "@/auth/RequireSudo";
 import { Suspense, lazy } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 
@@ -74,7 +75,7 @@ const App = () => (
                     <Route path="/attendance" element={<Attendance />} />
                     <Route path="/leave" element={<Leave />} />
                     <Route element={<RequireRole allowed={ROUTE_ROLES["/payroll"]} />}>
-                      <Route path="/payroll" element={<ErrorBoundary><Payroll /></ErrorBoundary>} />
+                      <Route path="/payroll" element={<ErrorBoundary><RequireSudo><Payroll /></RequireSudo></ErrorBoundary>} />
                     </Route>
                     <Route path="/my-pay" element={<MyPay />} />
                     <Route path="/performance" element={<Performance />} />
@@ -82,7 +83,7 @@ const App = () => (
                       <Route path="/audit-logs" element={<ErrorBoundary><AuditLogs /></ErrorBoundary>} />
                     </Route>
                     <Route element={<RequireRole allowed={ROUTE_ROLES["/settings"]} />}>
-                      <Route path="/settings" element={<SettingsPage />} />
+                      <Route path="/settings" element={<RequireSudo><SettingsPage /></RequireSudo>} />
                     </Route>
                     <Route element={<RequireRole allowed={ROUTE_ROLES["/role-matrix"]} />}>
                       <Route path="/role-matrix" element={<RoleMatrix />} />

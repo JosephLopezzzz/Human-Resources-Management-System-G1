@@ -1,12 +1,13 @@
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ObfuscatedValue } from "@/components/ObfuscatedValue";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "@/components/StatCard";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, Lock, FileText, AlertTriangle, RefreshCw, Search } from "lucide-react";
+import { PhilippinePeso, Lock, FileText, AlertTriangle, RefreshCw, Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePayroll, usePayrollRuns, usePayrollItemsForRun } from "@/hooks/usePayroll";
 import { useAuth } from "@/auth/useAuth";
@@ -112,16 +113,24 @@ const Payroll = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <StatCard
-          icon={DollarSign}
+          icon={PhilippinePeso}
           title="Total Gross"
-          value={totalGross.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
+          value={
+            <ObfuscatedValue>
+              {totalGross.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
+            </ObfuscatedValue>
+          }
           change={run ? format(new Date(run.period_start), "MMMM yyyy") : "No run yet"}
           changeType="neutral"
         />
         <StatCard
-          icon={DollarSign}
+          icon={PhilippinePeso}
           title="Total Net"
-          value={totalNet.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
+          value={
+            <ObfuscatedValue>
+              {totalNet.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
+            </ObfuscatedValue>
+          }
           change="After deductions"
           changeType="neutral"
         />
@@ -279,29 +288,39 @@ const Payroll = () => {
                       </p>
                     </TableCell>
                     <TableCell className="text-sm text-right font-mono">
-                      {pr.base_salary
-                        .toLocaleString(undefined, { style: "currency", currency: "PHP" })
-                        .replace(/\$/g, "₱")}
+                      <ObfuscatedValue className="justify-end w-full">
+                        {pr.base_salary
+                          .toLocaleString(undefined, { style: "currency", currency: "PHP" })
+                          .replace(/\$/g, "₱")}
+                      </ObfuscatedValue>
                     </TableCell>
                     <TableCell className="text-sm text-right font-mono text-success">
-                      {pr.allowances
-                        .toLocaleString(undefined, { style: "currency", currency: "PHP" })
-                        .replace(/\$/g, "₱")}
+                      <ObfuscatedValue className="justify-end w-full">
+                        {pr.allowances
+                          .toLocaleString(undefined, { style: "currency", currency: "PHP" })
+                          .replace(/\$/g, "₱")}
+                      </ObfuscatedValue>
                     </TableCell>
                     <TableCell className="text-sm text-right font-mono text-destructive">
-                      {pr.deductions
-                        .toLocaleString(undefined, { style: "currency", currency: "PHP" })
-                        .replace(/\$/g, "₱")}
+                      <ObfuscatedValue className="justify-end w-full">
+                        {pr.deductions
+                          .toLocaleString(undefined, { style: "currency", currency: "PHP" })
+                          .replace(/\$/g, "₱")}
+                      </ObfuscatedValue>
                     </TableCell>
                     <TableCell className="text-sm text-right font-mono text-destructive">
-                      {pr.tax
-                        .toLocaleString(undefined, { style: "currency", currency: "PHP" })
-                        .replace(/\$/g, "₱")}
+                      <ObfuscatedValue className="justify-end w-full">
+                        {pr.tax
+                          .toLocaleString(undefined, { style: "currency", currency: "PHP" })
+                          .replace(/\$/g, "₱")}
+                      </ObfuscatedValue>
                     </TableCell>
                     <TableCell className="text-sm text-right font-mono font-semibold">
-                      {pr.net_pay
-                        .toLocaleString(undefined, { style: "currency", currency: "PHP" })
-                        .replace(/\$/g, "₱")}
+                      <ObfuscatedValue className="justify-end w-full">
+                        {pr.net_pay
+                          .toLocaleString(undefined, { style: "currency", currency: "PHP" })
+                          .replace(/\$/g, "₱")}
+                      </ObfuscatedValue>
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={pr.status} />
@@ -367,10 +386,14 @@ const Payroll = () => {
                           <p className="text-sm font-medium">{pr.user_email}</p>
                         </TableCell>
                         <TableCell className="text-sm text-right font-mono">
-                          {pr.base_salary.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
+                          <ObfuscatedValue className="justify-end w-full">
+                            {pr.base_salary.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
+                          </ObfuscatedValue>
                         </TableCell>
                         <TableCell className="text-sm text-right font-mono font-semibold">
-                          {pr.net_pay.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
+                          <ObfuscatedValue className="justify-end w-full">
+                            {pr.net_pay.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
+                          </ObfuscatedValue>
                         </TableCell>
                         <TableCell><StatusBadge status={pr.status} /></TableCell>
                       </TableRow>

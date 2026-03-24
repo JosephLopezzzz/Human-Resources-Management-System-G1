@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ObfuscatedValue } from "@/components/ObfuscatedValue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -439,12 +440,14 @@ const Employees = () => {
                       {emp.join_date ? format(new Date(emp.join_date), "yyyy-MM-dd") : "—"}
                     </TableCell>
                     <TableCell className="text-sm text-right font-medium">
-                      {emp.salary_amount
-                        .toLocaleString(undefined, {
-                          style: "currency",
-                          currency: emp.salary_currency || "PHP",
-                        })
-                        .replace(/\$/g, "₱")}
+                      <ObfuscatedValue className="justify-end w-full">
+                        {emp.salary_amount
+                          .toLocaleString(undefined, {
+                            style: "currency",
+                            currency: emp.salary_currency || "PHP",
+                          })
+                          .replace(/\$/g, "₱")}
+                      </ObfuscatedValue>
                     </TableCell>
                   </TableRow>
                 ))
