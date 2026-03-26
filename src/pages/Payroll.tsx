@@ -23,7 +23,8 @@ const Payroll = () => {
     items, itemsLoading, itemsError, 
     generateRun, generating, 
     submitRun, submitting,
-    lockRun, locking 
+    lockRun, locking,
+    deleteRun, deleting 
   } = usePayroll();
   const { data: allRuns = [] } = usePayrollRuns();
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
@@ -137,9 +138,19 @@ const Payroll = () => {
               )}
 
               {run?.status === "locked" && (
-                <Button variant="outline" size="sm" disabled>
-                  <Lock className="h-4 w-4 mr-1" />
-                  Locked
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={async () => {
+                    if (confirm("Are you sure you want to delete this payroll run? All generated items will be lost.")) {
+                      await deleteRun();
+                      toast({ title: "Run deleted", description: "You can now re-generate the payroll." });
+                    }
+                  }}
+                  disabled={deleting}
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                >
+                  Delete & Reset
                 </Button>
               )}
 
@@ -163,7 +174,11 @@ const Payroll = () => {
           icon={PhilippinePeso}
           title="Total Gross"
           value={
-            <ObfuscatedValue auditLabel="Total Gross Payroll (Aggregate)" category="payroll">
+            <ObfuscatedValue 
+              auditLabel="Total Gross Payroll (Aggregate)" 
+              category="payroll"
+              entityId="stats_total_gross"
+            >
               {totalGross.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
             </ObfuscatedValue>
           }
@@ -174,7 +189,11 @@ const Payroll = () => {
           icon={PhilippinePeso}
           title="Total Net"
           value={
-            <ObfuscatedValue auditLabel="Total Net Payroll (Aggregate)" category="payroll">
+            <ObfuscatedValue 
+              auditLabel="Total Net Payroll (Aggregate)" 
+              category="payroll"
+              entityId="stats_total_net"
+            >
               {totalNet.toLocaleString(undefined, { style: "currency", currency: "PHP" }).replace(/\$/g, "₱")}
             </ObfuscatedValue>
           }

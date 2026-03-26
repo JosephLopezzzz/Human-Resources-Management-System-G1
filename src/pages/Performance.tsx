@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Plus } from "lucide-react";
 import { useReviewCycles, useKpis, usePerformanceMutations } from "@/hooks/usePerformance";
 import { useAuth } from "@/auth/useAuth";
-import { getCanonicalRole, canManagePerformance } from "@/auth/roles";
+import { getCanonicalRole, canManagePerformance, canConductPerformanceEvaluations } from "@/auth/roles";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,11 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
+import { useEmployees } from "@/hooks/useEmployees";
+import { useParticipants, useParticipantScores } from "@/hooks/usePerformance";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Users as UsersIcon } from "lucide-react";
 
 const createCycleSchema = z.object({
   code: z.string().min(1, "Code is required"),
@@ -29,12 +34,21 @@ const Performance = () => {
   const { user } = useAuth();
   const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
   const canManage = canManagePerformance(role);
-
+  const canEvaluate = canConductPerformanceEvaluations(role);
+  
+  const { employees = [] } = useEmployees();
   const { data: cycles = [], isLoading: cyclesLoading, error: cyclesError } = useReviewCycles();
   const { data: kpis = [], isLoading: kpisLoading, error: kpisError } = useKpis();
-  const { createCycle, creatingCycle } = usePerformanceMutations();
+  const { createCycle, creatingCycle, addParticipant, addingParticipant, updateScore, updatingScore } = usePerformanceMutations();
 
   const [open, setOpen] = useState(false);
+  const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
+  const [participantsOpen, setParticipantsOpen] = useState(false);
+  const [scoringParticipantId, setScoringParticipantId] = useState<string | null>(null);
+  const [scoringOpen, setScoringOpen] = useState(false);
+
+  const { data: participants = [], isLoading: participantsLoading } = useParticipants(selectedCycleId);
+  const { data: currentScores = [] } = useParticipantScores(scoringParticipantId);
 
   const form = useForm<CreateCycleValues>({
     resolver: zodResolver(createCycleSchema),
@@ -184,16 +198,29 @@ const Performance = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <StatusBadge
-                        status={rc.status}
-                        label={
-                          rc.status === "approved"
-                            ? "Completed"
-                            : rc.status === "active"
-                            ? "In Progress"
-                            : "Scheduled"
-                        }
-                      />
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedCycleId(rc.id);
+                            setParticipantsOpen(true);
+                          }}
+                        >
+                          <UsersIcon className="h-4 w-4 mr-1 text-muted-foreground" />
+                          Participants
+                        </Button>
+                        <StatusBadge
+                          status={rc.status}
+                          label={
+                            rc.status === "approved"
+                              ? "Completed"
+                              : rc.status === "active"
+                              ? "In Progress"
+                              : "Scheduled"
+                          }
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -201,6 +228,139 @@ const Performance = () => {
             </Table>
           </CardContent>
         </Card>
+
+        {/* --- Participants Dialog --- */}
+        <Dialog open={participantsOpen} onOpenChange={setParticipantsOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Cycle Participants</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {canManage && (
+                <div className="flex gap-2">
+                  <Select onValueChange={(v) => addParticipant({ cycleId: selectedCycleId!, employeeId: v })}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Add employee to cycle..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {employees
+                        .filter(e => !participants.some(p => p.employee_id === e.id))
+                        .map(e => (
+                          <SelectItem key={e.id} value={e.id}>{e.first_name} {e.last_name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button disabled={addingParticipant}>
+                    {addingParticipant ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
+                  </Button>
+                </div>
+              )}
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Score</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {participantsLoading ? (
+                    <TableRow><TableCell colSpan={4} className="text-center py-4 text-muted-foreground">Loading...</TableCell></TableRow>
+                  ) : participants.length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="text-center py-4 text-muted-foreground">No participants yet.</TableCell></TableRow>
+                  ) : (
+                    participants.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell>
+                          <p className="text-sm font-medium">{p.employee?.first_name} {p.employee?.last_name}</p>
+                          <p className="text-xs text-muted-foreground">{p.employee?.email}</p>
+                        </TableCell>
+                        <TableCell><Badge variant="outline">{p.status}</Badge></TableCell>
+                        <TableCell className="text-right font-mono font-medium">{p.score}%</TableCell>
+                        <TableCell className="text-right">
+                          {canEvaluate && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                setScoringParticipantId(p.id);
+                                setScoringOpen(true);
+                              }}
+                            >
+                              Evaluate
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* --- Scoring Dialog --- */}
+        <Dialog open={scoringOpen} onOpenChange={setScoringOpen}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Performance Evaluation</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 py-4">
+              {kpis.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">No KPIs defined for scoring.</div>
+              ) : (
+                kpis.map((kpi) => {
+                  const currentScore = currentScores.find(s => s.kpi_id === kpi.id);
+                  return (
+                    <div key={kpi.id} className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <label className="text-sm font-semibold">{kpi.name} ({kpi.weight}%)</label>
+                        <span className="text-xs text-muted-foreground">Target: {kpi.target}</span>
+                      </div>
+                      <div className="flex gap-3">
+                        <Input 
+                          type="number" 
+                          placeholder="Score (0-100)" 
+                          className="w-32"
+                          defaultValue={currentScore?.score ?? 0}
+                          onBlur={(e) => {
+                            const val = parseFloat(e.target.value);
+                            if (!isNaN(val)) {
+                              updateScore({
+                                participantId: scoringParticipantId!,
+                                kpiId: kpi.id,
+                                score: val
+                              });
+                            }
+                          }}
+                        />
+                        <Input 
+                          placeholder="Notes..." 
+                          className="flex-1"
+                          defaultValue={currentScore?.notes ?? ""}
+                          onBlur={(e) => {
+                            updateScore({
+                              participantId: scoringParticipantId!,
+                              kpiId: kpi.id,
+                              score: currentScore?.score ?? 0,
+                              notes: e.target.value
+                            });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setScoringOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Card>
           <CardHeader className="pb-3">

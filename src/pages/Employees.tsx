@@ -55,6 +55,8 @@ const createEmployeeSchema = z.object({
   join_date: z.string().optional(),
   salary_amount: z.string().min(1, "Salary is required"),
   salary_currency: z.string().min(1, "Currency is required"),
+  allowances: z.string().default("0"),
+  deductions: z.string().default("0"),
 });
 type CreateEmployeeValues = z.infer<typeof createEmployeeSchema>;
 
@@ -67,6 +69,8 @@ const editEmployeeSchema = z.object({
   join_date: z.string().optional(),
   salary_amount: z.string().min(1, "Salary is required"),
   salary_currency: z.string().min(1, "Currency is required"),
+  allowances: z.string().default("0"),
+  deductions: z.string().default("0"),
 });
 type EditEmployeeValues = z.infer<typeof editEmployeeSchema>;
 
@@ -99,6 +103,8 @@ function EditEmployeeDialog({
       join_date: emp.join_date ?? "",
       salary_amount: String(emp.salary_amount),
       salary_currency: emp.salary_currency,
+      allowances: String(emp.allowances ?? 0),
+      deductions: String(emp.deductions ?? 0),
     },
   });
 
@@ -113,6 +119,8 @@ function EditEmployeeDialog({
       join_date: emp.join_date ?? "",
       salary_amount: String(emp.salary_amount),
       salary_currency: emp.salary_currency,
+      allowances: String(emp.allowances ?? 0),
+      deductions: String(emp.deductions ?? 0),
     });
   }, [emp, form]);
 
@@ -249,6 +257,24 @@ function EditEmployeeDialog({
                   <FormMessage />
                 </FormItem>
               )} />
+              <FormField control={form.control} name="allowances" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Allowances</FormLabel>
+                  <FormControl>
+                    <Input type="number" min={0} step="0.01" disabled={!canEditSalary} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="deductions" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Standard Deductions</FormLabel>
+                  <FormControl>
+                    <Input type="number" min={0} step="0.01" disabled={!canEditSalary} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
@@ -298,6 +324,8 @@ const Employees = () => {
       join_date: "",
       salary_amount: "",
       salary_currency: "PHP",
+      allowances: "0",
+      deductions: "0",
     },
   });
 
@@ -317,6 +345,8 @@ const Employees = () => {
         join_date: values.join_date || new Date().toISOString().slice(0, 10),
         salary_amount: isNaN(numericSalary) ? 0 : numericSalary,
         salary_currency: values.salary_currency,
+        allowances: parseFloat(values.allowances) || 0,
+        deductions: parseFloat(values.deductions) || 0,
       });
 
       toast({
@@ -351,6 +381,8 @@ const Employees = () => {
       if (canSalary) {
         payload.salary_amount = isNaN(salary) ? emp.salary_amount : salary;
         payload.salary_currency = values.salary_currency;
+        payload.allowances = parseFloat(values.allowances) || 0;
+        payload.deductions = parseFloat(values.deductions) || 0;
       }
 
       await updateEmployee(payload as any);
@@ -537,13 +569,27 @@ const Employees = () => {
                             <FormMessage />
                           </FormItem>
                         )} />
-                        <FormField control={form.control} name="salary_currency" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Currency</FormLabel>
-                            <FormControl><Input placeholder="PHP" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
+              <FormField control={form.control} name="salary_currency" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Currency</FormLabel>
+                  <FormControl><Input placeholder="PHP" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="allowances" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Allowances</FormLabel>
+                  <FormControl><Input type="number" min={0} step="0.01" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="deductions" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Standard Deductions</FormLabel>
+                  <FormControl><Input type="number" min={0} step="0.01" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
                       </div>
                       <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

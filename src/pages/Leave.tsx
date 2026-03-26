@@ -94,6 +94,7 @@ const Leave = () => {
 
   async function handleDecision(id: string, status: "approved" | "rejected") {
     if (!user) return;
+    console.log("Decision Triggered:", { id, status, approverId: user.id });
     try {
       await updateStatus({
         id,
@@ -101,6 +102,7 @@ const Leave = () => {
         approverId: user.id,
         approverEmail: user.email ?? null,
       });
+      console.log("Status update successful");
 
       toast({
         title: `Request ${status}`,

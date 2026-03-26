@@ -14,6 +14,8 @@ const employeeSchema = z.object({
   join_date: z.string(),
   salary_amount: z.number(),
   salary_currency: z.string(),
+  allowances: z.number().default(0),
+  deductions: z.number().default(0),
 });
 
 export type Employee = z.infer<typeof employeeSchema>;

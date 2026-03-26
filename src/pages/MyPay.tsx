@@ -19,13 +19,13 @@ export default function MyPay() {
   const email = user?.email ?? "";
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["my_payroll_items", email],
-    enabled: !!email,
+    queryKey: ["my_payroll_items", user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
       const { data: items, error: err } = await supabase
         .from("payroll_items")
         .select("*")
-        .eq("user_email", email)
+        .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (err) throw err;
       const list = (items ?? []) as PayrollItem[];

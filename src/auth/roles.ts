@@ -182,7 +182,7 @@ export function canManageDepartments(role: RoleKey): boolean {
  *  Per BLUEPEAK policy this is restricted to the System Administrator.
  */
 export function canApproveLeave(role: RoleKey): boolean {
-  return role === "system_admin";
+  return ["system_admin", "hr_manager", "department_manager"].includes(role);
 }
 
 /** Can process/edit payroll (run payroll, compute, payslips) */
@@ -244,7 +244,7 @@ export function canEditEmployeeStatus(role: RoleKey): boolean {
 
 /** Role sets for RequireRole allowed lists (route guards) */
 export const ROUTE_ROLES: Record<string, RoleKey[]> = {
-  "/": ROLE_KEYS,
+  "/": [...ROLE_KEYS],
   "/employees": ["system_admin", "hr_manager", "hr_officer", "department_manager"],
   "/departments": ["system_admin", "hr_manager", "hr_officer", "department_manager"],
   // Route guards mirror MODULE_VIEW: everyone can reach Attendance & Leave.

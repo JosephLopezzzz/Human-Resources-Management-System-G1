@@ -6,6 +6,7 @@ const leaveTypeSchema = z.object({
   id: z.string().uuid(),
   code: z.string(),
   name: z.string(),
+  is_unpaid: z.boolean().default(false),
 });
 
 const leaveRequestSchema = z.object({

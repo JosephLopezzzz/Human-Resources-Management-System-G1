@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAudit, AuditCategory } from "@/hooks/useAudit";
@@ -26,8 +26,8 @@ export function ObfuscatedValue({
   entityId,
   entityType = "PII_DATA",
 }: ObfuscatedValueProps) {
-  // Use a unique ID for this instance if none provided
-  const id = entityId || Math.random().toString(36).substr(2, 9);
+  // Use a unique ID for this instance if none provided, memoized to stay stable during re-renders
+  const id = useMemo(() => entityId || Math.random().toString(36).substr(2, 9), [entityId]);
   const { revealedId, setRevealedId } = useMasking();
   const isRevealed = revealedId === id;
   const { logEvent } = useAudit();

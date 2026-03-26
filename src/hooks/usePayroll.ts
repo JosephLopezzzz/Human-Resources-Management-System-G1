@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 
 export type PayrollRunStatus = "draft" | "processing" | "review_pending" | "locked";
@@ -114,58 +114,137 @@ export function usePayroll() {
     mutationFn: async () => {
       const { code, period_start, period_end } = getCurrentPeriod();
 
-      // Check if run already exists
+      // Get or Create the run
+      let run: PayrollRun;
       const { data: existing, error: checkError } = await supabase
         .from("payroll_runs")
         .select("*")
         .eq("code", code)
         .limit(1);
+      
       if (checkError) throw checkError;
+      
       if (existing && existing.length > 0) {
-        return existing[0] as PayrollRun;
+        run = existing[0] as PayrollRun;
+      } else {
+        const { data: runData, error: runError } = await supabase
+          .from("payroll_runs")
+          .insert({
+            code,
+            period_start,
+            period_end,
+            status: "draft",
+          })
+          .select("*")
+          .single();
+        if (runError) throw runError;
+        run = runData as PayrollRun;
       }
 
-      // Create the run
-      const { data: runData, error: runError } = await supabase
-        .from("payroll_runs")
-        .insert({
-          code,
-          period_start,
-          period_end,
-          status: "draft",
-        })
-        .select("*")
-        .single();
-      if (runError) throw runError;
-      const run = runData as PayrollRun;
+      // Only generate items if the run is in 'draft' status
+      if (run.status !== "draft") {
+        return run;
+      }
 
       // Create payroll items from employees (regular and probation only)
       const { data: employees, error: empError } = await supabase
         .from("employees")
-        .select("id, email, salary_amount")
+        .select("id, email, salary_amount, allowances, deductions")
         .in("status", ["regular", "probation"]);
       if (empError) throw empError;
 
-      const items = (employees ?? []).map((emp: { id: string; email: string; salary_amount: number }) => {
+      const items = await Promise.all((employees ?? []).map(async (emp: any) => {
         const base = Number(emp.salary_amount) || 0;
-        const allowances = 0;
-        const deductions = 0;
-        const tax = 0;
-        const netPay = base + allowances - deductions - tax;
+        const allowances = Number(emp.allowances) || 0;
+        const fixedDeductions = Number(emp.deductions) || 0;
+
+        // --- Phase 4: Leave Deductions ---
+        const { data: unpaidLeaves } = await supabase
+          .from("leave_requests")
+          .select("days, leave_types!inner(is_unpaid)")
+          .eq("user_id", emp.id)
+          .eq("status", "approved")
+          .eq("leave_types.is_unpaid", true)
+          .gte("start_date", run.period_start)
+          .lte("end_date", run.period_end);
+        
+        const unpaidDays = (unpaidLeaves ?? []).reduce((sum, l) => sum + (l.days || 0), 0);
+        const dailyRate = base / 22;
+        const leaveDeduction = unpaidDays * dailyRate;
+
+        // --- Phase 5: Attendance Deductions ---
+        const { data: attendanceLogs } = await supabase
+          .from("attendance_logs")
+          .select("day, clock_in_at")
+          .eq("user_id", emp.id)
+          .gte("day", run.period_start)
+          .lte("day", run.period_end);
+
+        let tardinessDeduction = 0;
+        let absenceDeduction = 0;
+        const logs = attendanceLogs ?? [];
+        
+        // Calculate Tardiness (Assuming 09:00 AM start)
+        const minuteRate = dailyRate / 8 / 60;
+        logs.forEach(log => {
+          const clockInTime = new Date(log.clock_in_at);
+          const hour = clockInTime.getHours();
+          const minute = clockInTime.getMinutes();
+          if (hour > 9 || (hour === 9 && minute > 0)) {
+            const lateMinutes = (hour - 9) * 60 + minute;
+            tardinessDeduction += lateMinutes * minuteRate;
+          }
+        });
+
+        // Calculate Absences (Simplistic check for missing logs on weekdays)
+        const workdaysInPeriod = 10; // Assuming 10 workdays per bi-monthly period for demo
+        const loggedDays = new Set(logs.map(l => l.day)).size;
+        const leaveDays = unpaidDays; 
+        const missingDays = Math.max(0, workdaysInPeriod - loggedDays - leaveDays);
+        absenceDeduction = missingDays * dailyRate;
+
+        // --- Phase 6: Performance Bonuses ---
+        const { data: performance } = await supabase
+          .from("performance_participants")
+          .select("score")
+          .eq("user_id", emp.id)
+          .eq("status", "approved")
+          .gte("evaluated_at", run.period_start)
+          .lte("evaluated_at", run.period_end)
+          .maybeSingle();
+
+        let performanceBonus = 0;
+        if (performance && performance.score >= 90) {
+          performanceBonus = 5000; // Flat bonus for excellent performance
+        }
+
+        const totalAllowances = allowances + performanceBonus;
+        const totalDeductions = fixedDeductions + leaveDeduction + tardinessDeduction + absenceDeduction;
+        
+        const taxableIncome = base + totalAllowances - totalDeductions;
+        let tax = 0;
+        if (taxableIncome > 20833) {
+          tax = (taxableIncome - 20833) * 0.20;
+        }
+
+        const netPay = base + totalAllowances - totalDeductions - tax;
         return {
           run_id: run.id,
           user_id: emp.id,
           user_email: emp.email || "",
           base_salary: base,
-          allowances,
-          deductions,
+          allowances: totalAllowances,
+          deductions: totalDeductions,
           tax,
           net_pay: netPay,
           status: "pending",
         };
-      });
+      }));
 
       if (items.length > 0) {
+        // Clear existing items for this run first to avoid duplicates
+        await supabase.from("payroll_items").delete().eq("run_id", run.id);
+        
         const { error: itemsError } = await supabase.from("payroll_items").insert(items);
         if (itemsError) throw itemsError;
       }
@@ -209,6 +288,23 @@ export function usePayroll() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payroll_runs", "current"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll_items"] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const run = runsQuery.data;
+      if (!run) return;
+      const { error } = await supabase
+        .from("payroll_runs")
+        .delete()
+        .eq("id", run.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payroll_runs", "current"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll_items"] });
     },
   });
 
@@ -226,6 +322,7 @@ export function usePayroll() {
     submitting: submitMutation.isPending,
     lockRun: lockMutation.mutateAsync,
     locking: lockMutation.isPending,
+    deleteRun: deleteMutation.mutateAsync,
+    deleting: deleteMutation.isPending,
   };
 }
-
