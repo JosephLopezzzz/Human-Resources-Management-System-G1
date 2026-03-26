@@ -49,13 +49,13 @@ export function useAuditLogs(search: string, category: string) {
         try {
           const { data: empData } = await supabase
             .from("employees")
-            .select("user_id, first_name, last_name")
-            .in("user_id", actorIds);
+            .select("id, first_name, last_name")
+            .in("id", actorIds);
 
           if (empData) {
             for (const emp of empData) {
-              if (emp.user_id) {
-                nameMap[emp.user_id] = `${emp.first_name} ${emp.last_name}`.trim();
+              if (emp.id) {
+                nameMap[emp.id] = `${emp.first_name} ${emp.last_name}`.trim();
               }
             }
           }

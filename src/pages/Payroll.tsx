@@ -348,9 +348,9 @@ const Payroll = () => {
                 filteredItems.map((pr) => (
                   <TableRow key={pr.id}>
                     <TableCell>
-                      <p className="text-sm font-medium">{pr.user_email}</p>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {pr.user_id.slice(0, 8)}
+                      <p className="text-sm font-medium">{pr.employee_name || pr.user_email}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {pr.department_name ? `${pr.department_name} • ` : ""}<span className="font-mono">{pr.user_id.slice(0, 8)}</span>
                       </p>
                     </TableCell>
                     <TableCell className="text-sm text-right font-mono">
@@ -479,7 +479,8 @@ const Payroll = () => {
                     {historyItems.map((pr) => (
                       <TableRow key={pr.id}>
                         <TableCell>
-                          <p className="text-sm font-medium">{pr.user_email}</p>
+                          <p className="text-sm font-medium">{pr.employee_name || pr.user_email}</p>
+                          {pr.department_name && <p className="text-xs text-muted-foreground">{pr.department_name}</p>}
                         </TableCell>
                         <TableCell className="text-sm text-right font-mono">
                           <ObfuscatedValue className="justify-end w-full">
