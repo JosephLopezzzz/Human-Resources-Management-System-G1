@@ -101,6 +101,16 @@ export function useLeaveMutations() {
       days: number;
       description?: string;
     }) => {
+      console.log("Submitting Leave Request Payload:", {
+        user_id: payload.userId,
+        leave_type_id: payload.leaveTypeId,
+        start_date: payload.startDate,
+        end_date: payload.endDate,
+        days: payload.days,
+        status: "pending",
+        description: payload.description ?? null,
+      });
+
       const { error } = await supabase.from("leave_requests").insert({
         user_id: payload.userId,
         user_email: payload.email,
@@ -111,7 +121,11 @@ export function useLeaveMutations() {
         status: "pending",
         description: payload.description ?? null,
       });
-      if (error) throw error;
+      
+      if (error) {
+        console.error("Supabase Leave Insert Error Details:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leave_requests"] });

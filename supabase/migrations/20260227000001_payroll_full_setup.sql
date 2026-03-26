@@ -37,12 +37,15 @@ DROP POLICY IF EXISTS "payroll_runs_select_authenticated" ON public.payroll_runs
 DROP POLICY IF EXISTS "payroll_runs_insert_authenticated" ON public.payroll_runs;
 DROP POLICY IF EXISTS "payroll_runs_update_authenticated" ON public.payroll_runs;
 DROP POLICY IF EXISTS "payroll_runs_modify_admin_hr_only" ON public.payroll_runs;
+DROP POLICY IF EXISTS "payroll_runs_modify_authorized" ON public.payroll_runs;
 DROP POLICY IF EXISTS "payroll_items_select_authenticated" ON public.payroll_items;
 DROP POLICY IF EXISTS "payroll_items_insert_authenticated" ON public.payroll_items;
 DROP POLICY IF EXISTS "payroll_items_update_authenticated" ON public.payroll_items;
 DROP POLICY IF EXISTS "payroll_items_select_admin_hr_all" ON public.payroll_items;
 DROP POLICY IF EXISTS "payroll_items_select_self_limited" ON public.payroll_items;
 DROP POLICY IF EXISTS "payroll_items_modify_admin_hr_only" ON public.payroll_items;
+DROP POLICY IF EXISTS "payroll_items_modify_authorized" ON public.payroll_items;
+DROP POLICY IF EXISTS "payroll_items_select_owner_or_authorized" ON public.payroll_items;
 
 -- 5. Payroll Runs: Everyone authenticated can see the run list, but only admins/HR/payroll can modify.
 CREATE POLICY "payroll_runs_select_authenticated"

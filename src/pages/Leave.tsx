@@ -83,10 +83,11 @@ const Leave = () => {
 
       setOpen(false);
       form.reset();
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Caught Create Request Error:", err);
       toast({
         title: "Failed to submit leave request",
-        description: err instanceof Error ? err.message : "Something went wrong.",
+        description: err?.message || err?.details || "Unknown database error.",
         variant: "destructive",
       });
     }
@@ -402,7 +403,7 @@ const Leave = () => {
                         <StatusBadge status={lr.status} />
                       </TableCell>
                       <TableCell>
-                        {isApprover && lr.status === "pending" && (
+                        {isApprover && lr.user_id !== user?.id && lr.status === "pending" && (
                           <div className="flex gap-1">
                             <Button
                               variant="outline"

@@ -31,21 +31,27 @@ ALTER TABLE public.performance_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.performance_scores ENABLE ROW LEVEL SECURITY;
 
 -- Select: Everyone (authenticated) can see scores/participants for transparency or specific modules
+DROP POLICY IF EXISTS "performance_participants_select" ON public.performance_participants;
 CREATE POLICY "performance_participants_select" ON public.performance_participants FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "performance_scores_select" ON public.performance_scores;
 CREATE POLICY "performance_scores_select" ON public.performance_scores FOR SELECT TO authenticated USING (true);
 
 -- Insert/Update: HR Managers and System Admins
+DROP POLICY IF EXISTS "performance_participants_manage" ON public.performance_participants;
 CREATE POLICY "performance_participants_manage" ON public.performance_participants 
 FOR ALL TO authenticated 
 USING (auth.jwt() -> 'user_metadata' ->> 'role' IN ('system_admin', 'hr_manager', 'admin'))
 WITH CHECK (auth.jwt() -> 'user_metadata' ->> 'role' IN ('system_admin', 'hr_manager', 'admin'));
 
 -- Evaluation: Department Managers can edit scores for people they evaluate
+DROP POLICY IF EXISTS "performance_participants_evaluate" ON public.performance_participants;
 CREATE POLICY "performance_participants_evaluate" ON public.performance_participants 
 FOR UPDATE TO authenticated 
 USING (auth.jwt() -> 'user_metadata' ->> 'role' IN ('department_manager'))
 WITH CHECK (auth.jwt() -> 'user_metadata' ->> 'role' IN ('department_manager'));
 
+DROP POLICY IF EXISTS "performance_scores_manage" ON public.performance_scores;
 CREATE POLICY "performance_scores_manage" ON public.performance_scores 
 FOR ALL TO authenticated 
 USING (auth.jwt() -> 'user_metadata' ->> 'role' IN ('system_admin', 'hr_manager', 'department_manager', 'admin'))

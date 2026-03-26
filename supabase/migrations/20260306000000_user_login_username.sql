@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.user_login (
 ALTER TABLE public.user_login ENABLE ROW LEVEL SECURITY;
 
 -- Anon can only resolve username -> email (one row at a time via RPC)
+DROP POLICY IF EXISTS "user_login_select_anon_for_login" ON public.user_login;
 CREATE POLICY "user_login_select_anon_for_login"
 ON public.user_login FOR SELECT TO anon
 USING (true);
