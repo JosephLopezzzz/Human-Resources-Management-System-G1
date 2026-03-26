@@ -24,12 +24,23 @@ function mapLogToActivity(log: {
   actor_email: string | null;
   timestamp: string;
 }) {
-  const type =
-    log.action.includes("CREATE") || log.action.includes("APPROVED")
-      ? ("approved" as const)
-      : log.action.includes("REJECT") || log.action.includes("FAIL")
-        ? ("rejected" as const)
-        : ("pending" as const);
+  let type: "approved" | "rejected" | "pending" | "active" = "pending";
+  let label = "Info";
+
+  const action = log.action.toUpperCase();
+  if (action.includes("CREATE") || action.includes("APPROVE") || action.includes("SUCCESS")) {
+    type = "approved";
+    label = "Success";
+  } else if (action.includes("REJECT") || action.includes("FAIL") || action.includes("ERROR") || action.includes("DENY")) {
+    type = "rejected";
+    label = "Failed";
+  } else if (action.includes("UPDATE") || action.includes("EDIT")) {
+    type = "active";
+    label = "Updated";
+  } else if (action.includes("REVEAL") || action.includes("EXPORT")) {
+    type = "pending";
+    label = "Sensitive";
+  }
 
   return {
     id: log.id,
@@ -38,6 +49,7 @@ function mapLogToActivity(log: {
     actor: log.actor_email ?? "system",
     time: formatDistanceToNow(new Date(log.timestamp), { addSuffix: true }),
     type,
+    label,
   };
 }
 
@@ -273,7 +285,7 @@ const Dashboard = () => {
                         {item.actor}
                       </TableCell>
                       <TableCell className="group-hover:bg-muted/30">
-                        <StatusBadge status={item.type} />
+                        <StatusBadge status={item.type} label={item.label} />
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground group-hover:bg-muted/30">
                         {item.time}

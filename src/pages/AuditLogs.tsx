@@ -109,9 +109,21 @@ const AuditLogs = () => {
                 logs.map((log) => (
                   <TableRow key={log.id}>
                     <TableCell className="text-sm font-mono text-muted-foreground whitespace-nowrap">
-                      {new Date(log.timestamp).toISOString().replace("T", " ").slice(0, 19)}
+                      {new Date(new Date(log.timestamp).getTime() + 8 * 60 * 60 * 1000)
+                        .toISOString()
+                        .replace("T", " ")
+                        .slice(0, 19)} (PHT)
                     </TableCell>
-                    <TableCell className="text-sm">{log.actor_email ?? "system"}</TableCell>
+                    <TableCell className="text-sm">
+                      {log.actor_name ? (
+                        <div className="flex flex-col">
+                          <span className="font-medium text-foreground">{log.actor_name}</span>
+                          <span className="text-xs text-muted-foreground">{log.actor_email}</span>
+                        </div>
+                      ) : (
+                        log.actor_email ?? "system"
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-mono font-medium">{log.action}</span>

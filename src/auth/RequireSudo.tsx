@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Lock, Eye, EyeOff } from "lucide-react";
 
-export function RequireSudo({ children }: { children: React.ReactNode }) {
+export function RequireSudo({ children, forceFresh = false }: { children: React.ReactNode; forceFresh?: boolean }) {
   const { user } = useAuth();
   const [isSudo, setIsSudo] = useState(false);
   const [password, setPassword] = useState("");
@@ -15,11 +15,15 @@ export function RequireSudo({ children }: { children: React.ReactNode }) {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
+    if (forceFresh) {
+      setIsSudo(false);
+      return;
+    }
     const expiry = sessionStorage.getItem("hrms.sudoExpiry");
     if (expiry && parseInt(expiry, 10) > Date.now()) {
       setIsSudo(true);
     }
-  }, []);
+  }, [forceFresh]);
 
   if (isSudo) {
     return <>{children}</>;

@@ -1,10 +1,11 @@
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ObfuscatedValue } from "@/components/ObfuscatedValue";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus, ChevronRight } from "lucide-react";
+import { Search, Plus, ChevronRight, UserCheck } from "lucide-react";
 import { useDepartments } from "@/hooks/useDepartments";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useAuth } from "@/auth/useAuth";
@@ -14,6 +15,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 
@@ -22,6 +24,7 @@ const createDepartmentSchema = z.object({
   name: z.string().min(1, "Name is required"),
   budget_amount: z.string().optional(),
   budget_currency: z.string().min(1, "Currency is required"),
+  manager_user_id: z.string().nullable().optional(),
 });
 
 type CreateDepartmentValues = z.infer<typeof createDepartmentSchema>;
@@ -29,6 +32,8 @@ type CreateDepartmentValues = z.infer<typeof createDepartmentSchema>;
 const Departments = () => {
   const { departments, isLoading, error, createDepartment, creating } = useDepartments();
   const { employees } = useEmployees();
+
+  // Build employee count per department
   const empCountByDept = employees.reduce(
     (acc, e) => {
       if (e.department_id) acc[e.department_id] = (acc[e.department_id] ?? 0) + 1;
@@ -36,6 +41,18 @@ const Departments = () => {
     },
     {} as Record<string, number>
   );
+
+  // Build a lookup for manager names by their user_id
+  const managerNameById = employees.reduce(
+    (acc, e) => {
+      if ((e as any).user_id) {
+        acc[(e as any).user_id] = `${e.first_name} ${e.last_name}`;
+      }
+      return acc;
+    },
+    {} as Record<string, string>
+  );
+
   const { user } = useAuth();
   const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
   const canManage = canManageDepartments(role);
@@ -56,6 +73,7 @@ const Departments = () => {
       name: "",
       budget_amount: "",
       budget_currency: "PHP",
+      manager_user_id: null,
     },
   });
 
@@ -68,7 +86,7 @@ const Departments = () => {
       await createDepartment({
         code: values.code,
         name: values.name,
-        manager_user_id: null,
+        manager_user_id: values.manager_user_id || null,
         parent_id: null,
         budget_amount: numericBudget,
         budget_currency: values.budget_currency,
@@ -132,7 +150,7 @@ const Departments = () => {
                           <FormItem>
                             <FormLabel>Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="Engineering" {...field} />
+                              <Input placeholder="Investment Banking" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -165,6 +183,36 @@ const Departments = () => {
                         )}
                       />
                     </div>
+                    {/* Manager selection */}
+                    <FormField
+                      control={form.control}
+                      name="manager_user_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Department Manager</FormLabel>
+                          <Select
+                            value={field.value ?? "none"}
+                            onValueChange={(v) => field.onChange(v === "none" ? null : v)}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a manager (optional)" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">No Manager</SelectItem>
+                              {employees.map((emp) => (
+                                <SelectItem key={(emp as any).user_id ?? emp.id} value={(emp as any).user_id ?? emp.id}>
+                                  {emp.first_name} {emp.last_name}
+                                  <span className="ml-2 text-xs text-muted-foreground">— {emp.position}</span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <DialogFooter>
                       <Button
                         type="button"
@@ -210,7 +258,6 @@ const Departments = () => {
               <TableRow>
                 <TableHead>Department</TableHead>
                 <TableHead>Manager</TableHead>
-                <TableHead>Parent</TableHead>
                 <TableHead className="text-center">Employees</TableHead>
                 <TableHead className="text-right">Budget</TableHead>
                 <TableHead></TableHead>
@@ -220,7 +267,7 @@ const Departments = () => {
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={5}>
                       <Skeleton className="h-6 w-full" />
                     </TableCell>
                   </TableRow>
@@ -228,45 +275,62 @@ const Departments = () => {
               ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={5}
                     className="py-6 text-center text-sm text-muted-foreground"
                   >
                     No departments yet.
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((dept) => (
-                  <TableRow key={dept.id} className="cursor-pointer hover:bg-muted/50">
-                    <TableCell>
-                      <div>
-                        <p className="text-sm font-medium">{dept.name}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{dept.code}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {dept.manager_user_id ? "—" : "—"}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {(dept as { parent_name?: string | null }).parent_name ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-sm text-center">
-                      {empCountByDept[dept.id] ?? 0}
-                    </TableCell>
-                    <TableCell className="text-sm text-right font-medium">
-                      {dept.budget_amount != null
-                        ? dept.budget_amount
-                            .toLocaleString(undefined, {
-                              style: "currency",
-                              currency: dept.budget_currency || "PHP",
-                            })
-                            .replace(/\$/g, "₱")
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </TableCell>
-                  </TableRow>
-                ))
+                filtered.map((dept) => {
+                  const managerName = dept.manager_user_id
+                    ? managerNameById[dept.manager_user_id] ?? "—"
+                    : "—";
+                  return (
+                    <TableRow key={dept.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell>
+                        <div>
+                          <p className="text-sm font-medium">{dept.name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{dept.code}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {managerName !== "—" ? (
+                          <div className="flex items-center gap-1.5">
+                            <UserCheck className="h-3.5 w-3.5 text-primary" />
+                            <span>{managerName}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-center">
+                        {empCountByDept[dept.id] ?? 0}
+                      </TableCell>
+                      <TableCell className="text-sm text-right font-medium">
+                        <ObfuscatedValue
+                          className="justify-end w-full"
+                          auditLabel={`Budget for ${dept.name}`}
+                          category="payroll"
+                          entityId={dept.id}
+                          entityType="DEPARTMENT_BUDGET"
+                        >
+                          {dept.budget_amount != null
+                            ? dept.budget_amount
+                                .toLocaleString(undefined, {
+                                  style: "currency",
+                                  currency: dept.budget_currency || "PHP",
+                                })
+                                .replace(/\$/g, "₱")
+                            : "—"}
+                        </ObfuscatedValue>
+                      </TableCell>
+                      <TableCell>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

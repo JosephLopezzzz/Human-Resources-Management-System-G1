@@ -6,23 +6,44 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";  
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Download } from "lucide-react";
+import { Plus, Search, Download, Pencil } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useEmployees } from "@/hooks/useEmployees";
+import { useEmployees, type EmployeeWithDept } from "@/hooks/useEmployees";
 import { useDepartments } from "@/hooks/useDepartments";
 import { useAuth } from "@/auth/useAuth";
 import { useAudit } from "@/hooks/useAudit";
-import { getCanonicalRole, canManageEmployees } from "@/auth/roles";
+import {
+  getCanonicalRole,
+  canManageEmployees,
+  canEditEmployeePersonalData,
+  canEditEmployeeSalary,
+  canEditEmployeeStatus,
+} from "@/auth/roles";
 import { format } from "date-fns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "@/components/ui/use-toast";
 
+// ---- Schemas ----
 const createEmployeeSchema = z.object({
   employee_code: z.string().min(1, "Employee ID is required"),
   first_name: z.string().min(1, "First name is required"),
@@ -35,16 +56,224 @@ const createEmployeeSchema = z.object({
   salary_amount: z.string().min(1, "Salary is required"),
   salary_currency: z.string().min(1, "Currency is required"),
 });
-
 type CreateEmployeeValues = z.infer<typeof createEmployeeSchema>;
 
+const editEmployeeSchema = z.object({
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  position: z.string().min(1, "Position is required"),
+  department_id: z.string().uuid().nullable().optional(),
+  status: z.enum(["regular", "probation", "suspended", "terminated", "resigned"]),
+  join_date: z.string().optional(),
+  salary_amount: z.string().min(1, "Salary is required"),
+  salary_currency: z.string().min(1, "Currency is required"),
+});
+type EditEmployeeValues = z.infer<typeof editEmployeeSchema>;
+
+// ---- Edit Dialog ----
+function EditEmployeeDialog({
+  emp,
+  departments,
+  canEditSalary,
+  canEditStatus,
+  onSave,
+  saving,
+}: {
+  emp: EmployeeWithDept;
+  departments: { id: string; name: string }[];
+  canEditSalary: boolean;
+  canEditStatus: boolean;
+  onSave: (values: EditEmployeeValues) => Promise<void>;
+  saving: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const form = useForm<EditEmployeeValues>({
+    resolver: zodResolver(editEmployeeSchema),
+    defaultValues: {
+      first_name: emp.first_name,
+      last_name: emp.last_name,
+      position: emp.position,
+      department_id: emp.department_id ?? null,
+      status: emp.status,
+      join_date: emp.join_date ?? "",
+      salary_amount: String(emp.salary_amount),
+      salary_currency: emp.salary_currency,
+    },
+  });
+
+  // Reset form when emp changes
+  useEffect(() => {
+    form.reset({
+      first_name: emp.first_name,
+      last_name: emp.last_name,
+      position: emp.position,
+      department_id: emp.department_id ?? null,
+      status: emp.status,
+      join_date: emp.join_date ?? "",
+      salary_amount: String(emp.salary_amount),
+      salary_currency: emp.salary_currency,
+    });
+  }, [emp, form]);
+
+  async function handleSubmit(values: EditEmployeeValues) {
+    await onSave(values);
+    setOpen(false);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit employee">
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
+            Edit — {emp.first_name} {emp.last_name}
+          </DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="first_name" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>First Name</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="last_name" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Last Name</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="position" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Position / Title</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField
+                control={form.control}
+                name="department_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Department</FormLabel>
+                    <Select
+                      value={field.value ?? "none"}
+                      onValueChange={(v) => field.onChange(v === "none" ? null : v)}
+                    >
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">No Department</SelectItem>
+                        {departments.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField control={form.control} name="join_date" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Join Date</FormLabel>
+                  <FormControl><Input type="date" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={!canEditStatus}
+                    >
+                      <FormControl>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="regular">Regular</SelectItem>
+                        <SelectItem value="probation">Probation</SelectItem>
+                        <SelectItem value="suspended">Suspended</SelectItem>
+                        <SelectItem value="terminated">Terminated</SelectItem>
+                        <SelectItem value="resigned">Resigned</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {!canEditStatus && (
+                      <p className="text-xs text-muted-foreground">Only HR Managers and Admins can change status.</p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="salary_amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Salary</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        disabled={!canEditSalary}
+                        {...field}
+                      />
+                    </FormControl>
+                    {!canEditSalary && (
+                      <p className="text-xs text-muted-foreground">Only Admins can edit salary.</p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField control={form.control} name="salary_currency" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Currency</FormLabel>
+                  <FormControl>
+                    <Input placeholder="PHP" disabled={!canEditSalary} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---- Main Page ----
 const Employees = () => {
-  const { employees, isLoading, error, createEmployee, creating } = useEmployees();
+  const { employees, isLoading, error, createEmployee, creating, updateEmployee, updating } = useEmployees();
   const { departments } = useDepartments();
   const { user } = useAuth();
   const { logEvent } = useAudit();
   const role = getCanonicalRole(user?.user_metadata?.role as string | undefined);
   const canManage = canManageEmployees(role);
+  const canEdit = canEditEmployeePersonalData(role);
+  const canSalary = canEditEmployeeSalary(role);
+  const canStatus = canEditEmployeeStatus(role);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -101,9 +330,41 @@ const Employees = () => {
       console.error("Error creating employee:", err);
       toast({
         title: "Failed to create employee",
-        description: err?.message || JSON.stringify(err) || "Something went wrong.",
+        description: err?.message || "Something went wrong.",
         variant: "destructive",
       });
+    }
+  }
+
+  async function handleEditSave(emp: EmployeeWithDept, values: EditEmployeeValues) {
+    const salary = parseFloat(String(values.salary_amount).replace(/,/g, ""));
+    try {
+      const payload: Record<string, any> = {
+        id: emp.id,
+        first_name: values.first_name,
+        last_name: values.last_name,
+        position: values.position,
+        department_id: values.department_id || null,
+        join_date: values.join_date || emp.join_date,
+      };
+      if (canStatus) payload.status = values.status;
+      if (canSalary) {
+        payload.salary_amount = isNaN(salary) ? emp.salary_amount : salary;
+        payload.salary_currency = values.salary_currency;
+      }
+
+      await updateEmployee(payload as any);
+
+      logEvent(
+        `EMPLOYEE_EDIT: Updated record for ${values.first_name} ${values.last_name}`,
+        "employee",
+        "EMPLOYEE_RECORD",
+        emp.id
+      );
+
+      toast({ title: "Saved", description: `${values.first_name} ${values.last_name} updated.` });
+    } catch (err: any) {
+      toast({ title: "Failed to save", description: err?.message || "Something went wrong.", variant: "destructive" });
     }
   }
 
@@ -122,8 +383,6 @@ const Employees = () => {
 
   function handleExport() {
     const count = filtered.length;
-    
-    // Audit Logging for Data Export
     if (count > 50) {
       logEvent(
         `DLP_MASS_EXPORT: High-volume data export attempted (${count} records)`,
@@ -148,7 +407,7 @@ const Employees = () => {
       e.first_name,
       e.last_name,
       e.email,
-      (e as { department_name?: string | null }).department_name ?? "",
+      (e as any).department_name ?? "",
       e.position,
       e.status,
       e.join_date ?? "",
@@ -191,177 +450,104 @@ const Employees = () => {
                   <Form {...form}>
                     <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="employee_code"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Employee ID</FormLabel>
+                        <FormField control={form.control} name="employee_code" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Employee ID</FormLabel>
+                            <FormControl><Input placeholder="EMP-001" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="email" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl><Input type="email" placeholder="user@company.com" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="first_name" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>First Name</FormLabel>
+                            <FormControl><Input {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="last_name" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Last Name</FormLabel>
+                            <FormControl><Input {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="position" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Position</FormLabel>
+                            <FormControl><Input placeholder="Financial Analyst" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="department_id" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Department</FormLabel>
+                            <Select
+                              value={field.value ?? "none"}
+                              onValueChange={(v) => field.onChange(v === "none" ? null : v)}
+                            >
                               <FormControl>
-                                <Input placeholder="EMP-001" {...field} />
+                                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                               </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Email</FormLabel>
+                              <SelectContent>
+                                <SelectItem value="none">No Department</SelectItem>
+                                {departments.map((d) => (
+                                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="status" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Status</FormLabel>
+                            <Select value={field.value} onValueChange={field.onChange}>
                               <FormControl>
-                                <Input type="email" placeholder="user@company.com" {...field} />
+                                <SelectTrigger><SelectValue /></SelectTrigger>
                               </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="first_name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>First name</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="last_name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Last name</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="position"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Position</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Sr. Developer" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="department_id"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Department</FormLabel>
-                              <FormControl>
-                                <Select
-                                  value={field.value ?? "none"}
-                                  onValueChange={(val) => field.onChange(val === "none" ? null : val)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select department" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="none">No Department</SelectItem>
-                                    {departments.map((dept) => (
-                                      <SelectItem key={dept.id} value={dept.id}>
-                                        {dept.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="status"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Status</FormLabel>
-                              <FormControl>
-                                <Select
-                                  value={field.value}
-                                  onValueChange={field.onChange}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="regular">Regular</SelectItem>
-                                    <SelectItem value="probation">Probation</SelectItem>
-                                    <SelectItem value="suspended">Suspended</SelectItem>
-                                    <SelectItem value="terminated">Terminated</SelectItem>
-                                    <SelectItem value="resigned">Resigned</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="join_date"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Join date</FormLabel>
-                              <FormControl>
-                                <Input type="date" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="salary_amount"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Salary</FormLabel>
-                              <FormControl>
-                                <Input type="number" min={0} step="0.01" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="salary_currency"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Currency</FormLabel>
-                              <FormControl>
-                                <Input placeholder="PHP" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                              <SelectContent>
+                                <SelectItem value="regular">Regular</SelectItem>
+                                <SelectItem value="probation">Probation</SelectItem>
+                                <SelectItem value="suspended">Suspended</SelectItem>
+                                <SelectItem value="terminated">Terminated</SelectItem>
+                                <SelectItem value="resigned">Resigned</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="join_date" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Join Date</FormLabel>
+                            <FormControl><Input type="date" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="salary_amount" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Salary</FormLabel>
+                            <FormControl><Input type="number" min={0} step="0.01" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="salary_currency" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Currency</FormLabel>
+                            <FormControl><Input placeholder="PHP" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
                       </div>
                       <DialogFooter>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button type="submit" disabled={creating}>
-                          {creating ? "Creating..." : "Create"}
-                        </Button>
+                        <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                        <Button type="submit" disabled={creating}>{creating ? "Creating..." : "Create"}</Button>
                       </DialogFooter>
                     </form>
                   </Form>
@@ -375,9 +561,7 @@ const Employees = () => {
       <Card>
         <CardContent className="pt-4">
           {error && (
-            <div className="text-sm text-destructive mb-4">
-              Failed to load employees.
-            </div>
+            <div className="text-sm text-destructive mb-4">Failed to load employees.</div>
           )}
 
           <div className="flex gap-3 mb-4 items-center">
@@ -408,62 +592,49 @@ const Employees = () => {
                 <TableHead>Status</TableHead>
                 <TableHead>Join Date</TableHead>
                 <TableHead className="text-right">Salary</TableHead>
+                {canEdit && <TableHead></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={7}>
+                    <TableCell colSpan={canEdit ? 8 : 7}>
                       <Skeleton className="h-6 w-full" />
                     </TableCell>
                   </TableRow>
                 ))
               ) : paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-6 text-center text-sm text-muted-foreground"
-                  >
+                  <TableCell colSpan={canEdit ? 8 : 7} className="py-6 text-center text-sm text-muted-foreground">
                     No employees found.
                   </TableCell>
                 </TableRow>
               ) : (
                 paginated.map((emp) => (
-                  <TableRow key={emp.id} className="cursor-pointer hover:bg-muted/50">
+                  <TableRow key={emp.id} className="hover:bg-muted/50">
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Avatar className="h-7 w-7">
                           <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                            {`${emp.first_name} ${emp.last_name}`
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
+                            {`${emp.first_name} ${emp.last_name}`.split(" ").map((n) => n[0]).join("")}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="text-sm font-medium">
-                            {emp.first_name} {emp.last_name}
-                          </p>
+                          <p className="text-sm font-medium">{emp.first_name} {emp.last_name}</p>
                           <p className="text-xs text-muted-foreground">{emp.email}</p>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm font-mono text-muted-foreground">
-                      {emp.employee_code}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {emp.department_name ?? "—"}
-                    </TableCell>
+                    <TableCell className="text-sm font-mono text-muted-foreground">{emp.employee_code}</TableCell>
+                    <TableCell className="text-sm">{(emp as any).department_name ?? "—"}</TableCell>
                     <TableCell className="text-sm">{emp.position}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={emp.status} />
-                    </TableCell>
+                    <TableCell><StatusBadge status={emp.status} /></TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {emp.join_date ? format(new Date(emp.join_date), "yyyy-MM-dd") : "—"}
                     </TableCell>
                     <TableCell className="text-sm text-right font-medium">
-                      <ObfuscatedValue 
+                      <ObfuscatedValue
                         className="justify-end w-full"
                         auditLabel={`Salary for ${emp.first_name} ${emp.last_name}`}
                         category="employee"
@@ -471,13 +642,22 @@ const Employees = () => {
                         entityType="EMPLOYEE_SALARY"
                       >
                         {emp.salary_amount
-                          .toLocaleString(undefined, {
-                            style: "currency",
-                            currency: emp.salary_currency || "PHP",
-                          })
+                          .toLocaleString(undefined, { style: "currency", currency: emp.salary_currency || "PHP" })
                           .replace(/\$/g, "₱")}
                       </ObfuscatedValue>
                     </TableCell>
+                    {canEdit && (
+                      <TableCell>
+                        <EditEmployeeDialog
+                          emp={emp}
+                          departments={departments}
+                          canEditSalary={canSalary}
+                          canEditStatus={canStatus}
+                          onSave={(values) => handleEditSave(emp, values)}
+                          saving={updating}
+                        />
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}
@@ -486,7 +666,7 @@ const Employees = () => {
 
           <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
             <span>
-              Showing {paginated.length === 0 ? 0 : page * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE + PAGE_SIZE, filtered.length)} of {filtered.length} employees
+              Showing {paginated.length === 0 ? 0 : page * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE + PAGE_SIZE, filtered.length)} of {filtered.length} employees
             </span>
             <div className="flex gap-1">
               <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>

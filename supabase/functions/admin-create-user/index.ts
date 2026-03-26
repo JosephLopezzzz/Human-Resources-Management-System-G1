@@ -120,7 +120,8 @@ function buildEmployeeRow(
   name: string,
   username: string,
   assignedRole: string,
-  userId?: string
+  userId?: string,
+  departmentId?: string | null
 ) {
   const nameParts = (name ?? username ?? "User").trim().split(/\s+/);
   const first = nameParts[0] || username || "User";
@@ -135,7 +136,7 @@ function buildEmployeeRow(
     employee_code: empCode,
     first_name: first,
     last_name: last,
-    department_id: null,
+    department_id: departmentId ?? null,
     position: assignedRole.replace(/_/g, " "),
     status: "regular" as const,
     join_date: joinDate,
@@ -149,9 +150,10 @@ async function syncEmployeeToModule(
   name: string,
   username: string,
   assignedRole: string,
-  userId?: string
+  userId?: string,
+  departmentId?: string | null
 ) {
-  const row = buildEmployeeRow(email, name, username, assignedRole, userId);
+  const row = buildEmployeeRow(email, name, username, assignedRole, userId, departmentId);
   try {
     const { data: existing } = await adminClient
       .from("employees")
@@ -167,6 +169,7 @@ async function syncEmployeeToModule(
           first_name: row.first_name,
           last_name: row.last_name,
           position: row.position,
+          department_id: row.department_id,
         })
         .eq("id", existing.id);
     } else {
@@ -377,7 +380,7 @@ serve(async (req) => {
       return jsonResponse(JSON.stringify({ error: "Missing email, password, or OTP" }), 400, req);
     }
 
-    const { email, password, name, role: newRole, username: rawUsername, otp } = body;
+    const { email, password, name, role: newRole, username: rawUsername, otp, department_id } = body;
 
     // Verify OTP
     const { data: otpRecord, error: otpError } = await adminClient
@@ -518,7 +521,8 @@ serve(async (req) => {
           name ?? "User",
           username,
           assignedRole,
-          updated?.user?.id ?? existingId
+          updated?.user?.id ?? existingId,
+          department_id
         );
 
         try {
@@ -559,7 +563,8 @@ serve(async (req) => {
       name ?? "User",
       username,
       assignedRole,
-      data.user?.id
+      data.user?.id,
+      department_id
     );
 
     const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("cf-connecting-ip") ?? req.headers.get("x-real-ip") ?? null;
@@ -587,7 +592,7 @@ serve(async (req) => {
     });
   }
 
-  // Default response for other paths
+    // Default response for other paths
     return jsonResponse(JSON.stringify({ error: "Endpoint not found" }), 404, req);
   } catch (err) {
     console.error("Global Edge Function Error:", err);

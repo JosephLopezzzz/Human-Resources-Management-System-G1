@@ -13,6 +13,7 @@ import { InactivityLogout } from "@/auth/InactivityLogout";
 import { RequireSudo } from "@/auth/RequireSudo";
 import { Suspense, lazy } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
+import { MaskingProvider } from "@/components/MaskingContext";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Employees = lazy(() => import("./pages/Employees"));
@@ -45,8 +46,9 @@ const App = () => (
   <ThemeProvider defaultTheme="system" storageKey="bluepeak-ui-theme">
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
+        <MaskingProvider>
+          <Toaster />
+          <Sonner />
         <BrowserRouter
           future={{
             v7_startTransition: true,
@@ -75,7 +77,7 @@ const App = () => (
                     <Route path="/attendance" element={<Attendance />} />
                     <Route path="/leave" element={<Leave />} />
                     <Route element={<RequireRole allowed={ROUTE_ROLES["/payroll"]} />}>
-                      <Route path="/payroll" element={<ErrorBoundary><RequireSudo><Payroll /></RequireSudo></ErrorBoundary>} />
+                      <Route path="/payroll" element={<ErrorBoundary><RequireSudo forceFresh><Payroll /></RequireSudo></ErrorBoundary>} />
                     </Route>
                     <Route path="/my-pay" element={<MyPay />} />
                     <Route path="/performance" element={<Performance />} />
@@ -97,7 +99,8 @@ const App = () => (
           </AuthProvider>
         </ErrorBoundary>
       </BrowserRouter>
-    </TooltipProvider>
+        </MaskingProvider>
+      </TooltipProvider>
   </QueryClientProvider>
   </ThemeProvider>
 );

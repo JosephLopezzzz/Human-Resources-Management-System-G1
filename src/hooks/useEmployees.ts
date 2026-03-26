@@ -58,11 +58,29 @@ export function useEmployees() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, ...payload }: Partial<Employee> & { id: string }) => {
+      const { data, error } = await supabase
+        .from("employees")
+        .update(payload)
+        .eq("id", id)
+        .select("*")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+  });
+
   return {
     ...listQuery,
     employees: (listQuery.data ?? []) as EmployeeWithDept[],
     createEmployee: createMutation.mutateAsync,
     creating: createMutation.isPending,
+    updateEmployee: updateMutation.mutateAsync,
+    updating: updateMutation.isPending,
   };
 }
 

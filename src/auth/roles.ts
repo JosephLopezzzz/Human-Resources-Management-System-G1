@@ -155,7 +155,7 @@ const MODULE_VIEW: Record<ModuleId, RoleKey[]> = {
     "employee",
   ],
   payroll: ["system_admin", "hr_manager", "payroll_officer", "finance_manager"],
-  my_pay: ROLE_KEYS,
+  my_pay: [...ROLE_KEYS],
   performance: ["system_admin", "hr_manager", "hr_officer", "department_manager"],
   audit_logs: ["system_admin"],
   role_matrix: ["system_admin"],
@@ -232,6 +232,16 @@ export function canEditEmployeePersonalData(role: RoleKey): boolean {
   return ["system_admin", "hr_manager", "hr_officer"].includes(role);
 }
 
+/** Only system admin can edit salary (sensitive compensation data) */
+export function canEditEmployeeSalary(role: RoleKey): boolean {
+  return role === "system_admin";
+}
+
+/** System admin and HR Manager can change employment status (e.g., terminations) */
+export function canEditEmployeeStatus(role: RoleKey): boolean {
+  return ["system_admin", "hr_manager"].includes(role);
+}
+
 /** Role sets for RequireRole allowed lists (route guards) */
 export const ROUTE_ROLES: Record<string, RoleKey[]> = {
   "/": ROLE_KEYS,
@@ -259,7 +269,7 @@ export const ROUTE_ROLES: Record<string, RoleKey[]> = {
     "employee",
   ],
   "/payroll": ["system_admin", "hr_manager", "payroll_officer", "finance_manager"],
-  "/my-pay": ROLE_KEYS,
+  "/my-pay": [...ROLE_KEYS],
   "/performance": ["system_admin", "hr_manager", "hr_officer", "department_manager"],
   "/audit-logs": ["system_admin"],
   "/role-matrix": ["system_admin"],

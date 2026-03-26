@@ -6,6 +6,7 @@ export type AuditLog = {
   timestamp: string;
   actor_id: string | null;
   actor_email: string | null;
+  actor_name?: string | null;
   action: string;
   category: string;
   entity_type: string;
@@ -17,6 +18,7 @@ export function useAuditLogs(search: string, category: string) {
   return useQuery({
     queryKey: ["audit_logs", { search, category }],
     queryFn: async () => {
+      // Step 1: fetch audit logs (no FK join to avoid schema dependency)
       let query = supabase
         .from("audit_logs")
         .select("*")
@@ -36,7 +38,36 @@ export function useAuditLogs(search: string, category: string) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data ?? []) as AuditLog[];
+
+      const logs = (data ?? []) as any[];
+
+      // Step 2: look up employee names for unique actor_ids (best-effort, won't fail)
+      const actorIds = [...new Set(logs.map((l) => l.actor_id).filter(Boolean))];
+      let nameMap: Record<string, string> = {};
+
+      if (actorIds.length > 0) {
+        try {
+          const { data: empData } = await supabase
+            .from("employees")
+            .select("user_id, first_name, last_name")
+            .in("user_id", actorIds);
+
+          if (empData) {
+            for (const emp of empData) {
+              if (emp.user_id) {
+                nameMap[emp.user_id] = `${emp.first_name} ${emp.last_name}`.trim();
+              }
+            }
+          }
+        } catch {
+          // If name lookup fails, we still return logs — just without names
+        }
+      }
+
+      return logs.map((log) => ({
+        ...log,
+        actor_name: log.actor_id ? nameMap[log.actor_id] ?? null : null,
+      })) as AuditLog[];
     },
   });
 }

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useDepartments } from "@/hooks/useDepartments";
 import {
   getCanonicalRole,
   canCreateUsers,
@@ -26,6 +27,8 @@ export default function AdminCreateUser() {
   const assignableRoles = getAssignableRolesFor(role);
   const defaultRole = assignableRoles[0] ?? "employee";
 
+  const { departments = [] } = useDepartments();
+  const [selectedDept, setSelectedDept] = React.useState<string>("none");
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
   const [username, setUsername] = React.useState("");
@@ -167,7 +170,7 @@ export default function AdminCreateUser() {
       }
 
       const { data, errorMessage } = await invokeFunction<
-        { email: string; password: string; name: string; role: string; username?: string; otp: string },
+        { email: string; password: string; name: string; role: string; username?: string; otp: string; department_id?: string | null },
         { user?: { id?: string }; updated?: boolean }
       >("admin-create-user/create-user", token, {
         email,
@@ -176,6 +179,7 @@ export default function AdminCreateUser() {
         role: selectedRole,
         username: username || undefined,
         otp,
+        department_id: selectedDept !== "none" ? selectedDept : null,
       });
 
       if (errorMessage) {
@@ -252,6 +256,26 @@ export default function AdminCreateUser() {
               <p className="text-xs text-muted-foreground">
                 This will be the unique username they use to sign in. If left blank, it is derived from their name.
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="department">Department</Label>
+              <Select
+                value={selectedDept}
+                onValueChange={setSelectedDept}
+              >
+                <SelectTrigger id="department">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Department</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

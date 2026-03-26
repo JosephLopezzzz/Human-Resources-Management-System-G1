@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAudit, AuditCategory } from "@/hooks/useAudit";
+import { useMasking } from "./MaskingContext";
 
 interface ObfuscatedValueProps {
   children: React.ReactNode;
@@ -25,20 +26,23 @@ export function ObfuscatedValue({
   entityId,
   entityType = "PII_DATA",
 }: ObfuscatedValueProps) {
-  const [isRevealed, setIsRevealed] = useState(false);
+  // Use a unique ID for this instance if none provided
+  const id = entityId || Math.random().toString(36).substr(2, 9);
+  const { revealedId, setRevealedId } = useMasking();
+  const isRevealed = revealedId === id;
   const { logEvent } = useAudit();
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     const nextState = !isRevealed;
-    setIsRevealed(nextState);
+    setRevealedId(nextState ? id : null);
 
     if (nextState && auditLabel) {
       logEvent(
         `REVEAL_SENSITIVE_DATA: ${auditLabel}`,
         category,
         entityType,
-        entityId
+        id
       );
     }
   };
